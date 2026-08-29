@@ -8,6 +8,7 @@ import { DashboardView } from './components/dashboard/DashboardView';
 import { ClientListView } from './components/clients/ClientListView';
 import { ClientDetailView } from './components/clients/ClientDetailView';
 import { ClientFormModal } from './components/clients/ClientFormModal';
+import { QuickLinkModal } from './components/clients/QuickLinkModal';
 
 import { ProjectListView } from './components/projects/ProjectListView';
 import { ProjectFormModal } from './components/projects/ProjectFormModal';
@@ -38,6 +39,7 @@ export function App() {
   // Global modals
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isQuickLinkOpen, setIsQuickLinkOpen] = useState(false);
 
   const [isNewClientOpen, setIsNewClientOpen] = useState(false);
   const [isNewProjectOpen, setIsNewProjectOpen] = useState(false);
@@ -45,14 +47,30 @@ export function App() {
   const [isNewWebOpen, setIsNewWebOpen] = useState(false);
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
 
-  // Re-render state on db updates
+  // Re-render state on db updates + Auto-sync from onboarding submissions
   const [, setDbTick] = useState(0);
 
   useEffect(() => {
+    // Initial sync of any submitted onboarding
+    db.syncOnboardingSubmissions();
+
     const unsubscribe = subscribeToDatabase(() => {
       setDbTick((t) => t + 1);
     });
-    return unsubscribe;
+
+    const handleStorageChange = () => {
+      const synced = db.syncOnboardingSubmissions();
+      if (synced > 0) {
+        setDbTick((t) => t + 1);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   // Listen to URL hash & params for direct /onboarding routes
@@ -219,6 +237,7 @@ export function App() {
           title={getSectionTitle()}
           subtitle={getSectionSubtitle()}
           onOpenSearch={() => setIsSearchOpen(true)}
+          onOpenQuickLink={() => setIsQuickLinkOpen(true)}
           onOpenNewClient={() => setIsNewClientOpen(true)}
           onOpenNewProject={() => setIsNewProjectOpen(true)}
           onOpenNewDomain={() => setIsNewDomainOpen(true)}
@@ -232,6 +251,7 @@ export function App() {
             {currentSection === 'dashboard' && (
               <DashboardView
                 onNavigate={handleNavigate}
+                onOpenQuickLink={() => setIsQuickLinkOpen(true)}
                 onOpenNewClient={() => setIsNewClientOpen(true)}
                 onOpenNewProject={() => setIsNewProjectOpen(true)}
                 onOpenNewDomain={() => setIsNewDomainOpen(true)}
@@ -252,6 +272,7 @@ export function App() {
                   <ClientListView
                     onSelectClient={(id) => setSelectedClientId(id)}
                     onOpenNewClient={() => setIsNewClientOpen(true)}
+                    onOpenQuickLink={() => setIsQuickLinkOpen(true)}
                   />
                 )}
               </>
@@ -354,6 +375,11 @@ export function App() {
       <TaskFormModal
         isOpen={isNewTaskOpen}
         onClose={() => setIsNewTaskOpen(false)}
+      />
+
+      <QuickLinkModal
+        isOpen={isQuickLinkOpen}
+        onClose={() => setIsQuickLinkOpen(false)}
       />
     </div>
   );

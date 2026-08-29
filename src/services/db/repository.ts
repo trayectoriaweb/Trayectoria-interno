@@ -656,6 +656,175 @@ export const db = {
 
     return results.slice(0, 15);
   },
+
+  // SYNC ONBOARDING SUBMISSIONS AUTOMATICALLY INTO CLIENTS
+  syncOnboardingSubmissions(): number {
+    const state = loadDatabase();
+    let newClientsCount = 0;
+    const today = new Date().toISOString().split('T')[0];
+
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('trayectoria_onboarding_TRAY-')) {
+          const raw = localStorage.getItem(key);
+          if (!raw) continue;
+
+          const submission = JSON.parse(raw);
+          const clientId = submission.clientId;
+          if (!clientId) continue;
+
+          const p = submission.personalInfo || {};
+          if (!p.nombre && !p.profesion) continue;
+
+          const fullName = `${p.nombre || ''} ${p.apellido || ''}`.trim() || 'Nuevo Cliente';
+          const commercialName = p.nombreEnSitio || p.nombreProfesional || fullName;
+          const profession = p.profesion || 'Profesional';
+
+          const existingIndex = state.clients.findIndex((c) => c.id === clientId);
+
+          const mappedContent: Client['content'] = {
+            identity: {
+              name: commercialName,
+              profession: profession,
+              colors: submission.style?.coloresPreferidos
+                ? [submission.style.coloresPreferidos]
+                : ['#0033FF', '#FFFFFF'],
+              fonts: 'Plus Jakarta Sans',
+              isComplete: !!(p.nombre && p.profesion),
+            },
+            presentation: {
+              bio: submission.history?.presentacionCorta || '',
+              shortDescription: p.especialidadPrincipal || '',
+              mainSlogan: commercialName,
+              isComplete: !!submission.history?.presentacionCorta,
+            },
+            services: {
+              items: (submission.offer?.servicios || []).map((s: any, idx: number) => ({
+                id: s.id || `srv-${idx}`,
+                title: s.nombre,
+                description: s.descripcion,
+                price: '',
+              })),
+              isComplete: (submission.offer?.servicios?.length || 0) > 0,
+            },
+            education: {
+              items: (submission.history?.formacion || []).map((f: any, idx: number) => ({
+                id: f.id || `for-${idx}`,
+                degree: f.carrera,
+                institution: f.institucion,
+                year: f.anio,
+              })),
+              isComplete: (submission.history?.formacion?.length || 0) > 0,
+            },
+            experience: {
+              items: (submission.history?.experiencias || []).map((e: any, idx: number) => ({
+                id: e.id || `exp-${idx}`,
+                role: e.rol,
+                company: e.lugar,
+                period: e.anio,
+                description: e.descripcion,
+              })),
+              isComplete: (submission.history?.experiencias?.length || 0) > 0,
+            },
+            contact: {
+              whatsapp: submission.contact?.whatsapp || p.whatsapp || '',
+              email: submission.contact?.email || p.email || '',
+              instagram: submission.contact?.instagram || '',
+              linkedin: submission.contact?.linkedin || '',
+              location: submission.contact?.ubicacion?.ciudad || p.ciudad || 'Buenos Aires',
+              isComplete: !!(submission.contact?.whatsapp || submission.contact?.email),
+            },
+            portfolio: {
+              items: (submission.offer?.proyectos || []).map((pr: any, idx: number) => ({
+                id: pr.id || `pro-${idx}`,
+                title: pr.nombre,
+                category: profession,
+                year: pr.anio,
+                description: pr.descripcion,
+                link: pr.url,
+                images: [],
+              })),
+              isComplete: (submission.offer?.proyectos?.length || 0) > 0,
+            },
+          };
+
+          if (existingIndex === -1) {
+            // Auto-create new client upon onboarding submission
+            const newClient: Client = {
+              id: clientId,
+              fullName,
+              commercialName,
+              profession,
+              status: 'Activo',
+              email: submission.contact?.email || p.email || '',
+              whatsapp: submission.contact?.whatsapp || p.whatsapp || '',
+              instagram: submission.contact?.instagram || '',
+              linkedin: submission.contact?.linkedin || '',
+              city: p.ciudad || submission.contact?.ubicacion?.ciudad || 'Buenos Aires',
+              country: 'Argentina',
+              price: '$95 USD',
+              createdAt: today,
+              lastContact: today,
+              internalNotes: `Cliente registrado automáticamente vía Onboarding Web (Estado: ${submission.status}). Sensaciones: ${(submission.style?.sensaciones || []).join(', ')}.`,
+              content: mappedContent,
+            };
+
+            state.clients.unshift(newClient);
+
+            const newProjectId = generateNextProjectId(clientId, state.projects);
+            const newProject: Project = {
+              id: newProjectId,
+              clientId: clientId,
+              clientName: fullName,
+              name: `${commercialName} — Web Principal`,
+              projectType: 'Sitio Web Completo',
+              status: submission.status === 'submitted' ? 'En producción' : 'Esperando contenido',
+              startDate: today,
+              estimatedDeliveryDate: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
+              price: '$95 USD',
+              responsible: 'Operaciones Trayectoria',
+              notes: `Proyecto generado automáticamente al recibir la información del cliente.`,
+              checklist: initialChecklistTemplate.map((item) => ({ ...item, completed: false })),
+              createdAt: today,
+            };
+            state.projects.unshift(newProject);
+
+            state.activityLogs.unshift({
+              id: `ACT-${Date.now().toString().slice(-5)}`,
+              clientId: clientId,
+              clientName: fullName,
+              projectId: newProjectId,
+              type: 'client_created',
+              title: 'Cliente creado automáticamente vía Onboarding',
+              description: `${fullName} (${profession}) completó su información en Trayectoria Web y fue dado de alta con éxito.`,
+              date: today,
+              author: 'Sistema Onboarding',
+            });
+
+            newClientsCount++;
+          } else {
+            // Update existing client content
+            const cl = state.clients[existingIndex];
+            cl.fullName = fullName || cl.fullName;
+            cl.commercialName = commercialName || cl.commercialName;
+            cl.profession = profession || cl.profession;
+            cl.whatsapp = submission.contact?.whatsapp || p.whatsapp || cl.whatsapp;
+            cl.email = submission.contact?.email || p.email || cl.email;
+            cl.content = mappedContent;
+          }
+        }
+      }
+
+      if (newClientsCount > 0) {
+        saveDatabase(state);
+      }
+    } catch (err) {
+      console.warn('Error during syncOnboardingSubmissions:', err);
+    }
+
+    return newClientsCount;
+  },
 };
 
 export function getDomainExpirationInfo(expirationDateStr: string): {

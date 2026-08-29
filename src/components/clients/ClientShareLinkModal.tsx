@@ -18,8 +18,8 @@ export const ClientShareLinkModal: React.FC<ClientShareLinkModalProps> = ({
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedMessage, setCopiedMessage] = useState(false);
 
-  // Dedicated clean link
-  const clientUrl = `${window.location.origin}${window.location.pathname}#/onboarding/${client.id}`;
+  // Dedicated clean link to Trayectoria-web
+  const clientUrl = `https://trayectoriaweb.github.io/Trayectoria-web/onboarding.html?clientId=${client.id}`;
 
   const firstName = client.fullName.split(' ')[0] || 'hola';
 

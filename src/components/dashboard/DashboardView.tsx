@@ -23,6 +23,7 @@ import { ActivityModal } from '../activity/ActivityModal';
 
 interface DashboardViewProps {
   onNavigate: (section: NavSection, clientId?: string) => void;
+  onOpenQuickLink?: () => void;
   onOpenNewClient: () => void;
   onOpenNewProject: () => void;
   onOpenNewTask: () => void;
@@ -31,6 +32,7 @@ interface DashboardViewProps {
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigate,
+  onOpenQuickLink,
   onOpenNewClient,
   onOpenNewProject,
   onOpenNewTask,
@@ -50,13 +52,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   });
 
   return (
-    <div className="space-y-8 pb-12">
-      {/* Top Banner / Welcome */}
+    <div className="space-y-8 pb-12 font-sans">
+      {/* Top Banner / Welcome with Trayectoria Klein Blue styling */}
       <div className="rounded-2xl border border-zinc-200/80 bg-white p-6 sm:p-8 shadow-xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-zinc-100 text-[11px] font-medium text-zinc-700">
-              <span className="w-1.5 h-1.5 rounded-full bg-zinc-900" />
+            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-blue-50 text-[11px] font-bold text-[#0033FF]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#0033FF]" />
               Centro de Operaciones TRAYECTORIA
             </div>
             <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-900 font-display">
@@ -69,6 +71,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Quick Actions Group */}
           <div className="flex flex-wrap items-center gap-2">
+            {onOpenQuickLink && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={onOpenQuickLink}
+                icon={<Sparkles className="w-3.5 h-3.5" />}
+                className="bg-[#0033FF] hover:bg-[#0026CC] text-white shadow-sm font-bold"
+              >
+                ⚡ Generar Enlace para Cliente
+              </Button>
+            )}
             <Button
               variant="primary"
               size="sm"

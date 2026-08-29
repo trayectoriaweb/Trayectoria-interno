@@ -27,11 +27,13 @@ import { ClientShareLinkModal } from './ClientShareLinkModal';
 interface ClientListViewProps {
   onSelectClient: (clientId: string) => void;
   onOpenNewClient: () => void;
+  onOpenQuickLink: () => void;
 }
 
 export const ClientListView: React.FC<ClientListViewProps> = ({
   onSelectClient,
   onOpenNewClient,
+  onOpenQuickLink,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('Todos');
@@ -83,14 +85,27 @@ export const ClientListView: React.FC<ClientListViewProps> = ({
           </p>
         </div>
 
-        <Button
-          variant="primary"
-          size="md"
-          onClick={onOpenNewClient}
-          icon={<Plus className="w-4 h-4" />}
-        >
-          + Nuevo Cliente
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="md"
+            onClick={onOpenQuickLink}
+            icon={<Sparkles className="w-4 h-4 text-[#0033FF]" />}
+            className="border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-[#0033FF] font-bold"
+          >
+            ⚡ Generar Enlace para Cliente
+          </Button>
+
+          <Button
+            variant="primary"
+            size="md"
+            onClick={onOpenNewClient}
+            icon={<Plus className="w-4 h-4" />}
+            className="bg-zinc-900 hover:bg-black text-white font-bold"
+          >
+            + Nuevo Cliente Manual
+          </Button>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
