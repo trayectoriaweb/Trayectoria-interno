@@ -198,7 +198,7 @@ export function App() {
   };
 
   return (
-    <div className="flex h-screen bg-[#FAFAFA] text-zinc-900 antialiased overflow-hidden font-sans">
+    <div className="flex h-screen bg-slate-50 text-slate-900 antialiased overflow-hidden font-sans workbench-grid">
       {/* Desktop Sidebar */}
       <Sidebar
         currentSection={currentSection}

@@ -4,18 +4,45 @@
 
 @layer base {
   :root {
-    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
+    --klein-blue: #0033FF;
+    --klein-blue-glow: rgba(0, 51, 255, 0.2);
+    --grid-line-color: rgba(15, 23, 42, 0.05);
   }
 
   body {
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     font-family: var(--font-sans);
-    background-color: #FAFAFA;
-    color: #18181B;
+    background-color: #FFFFFF;
+    color: #0F172A;
     overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
   }
 }
+
+/* Blueprint Grid Background Pattern matching Trayectoria-web */
+.workbench-grid {
+  background-color: #FFFFFF;
+  background-image:
+    linear-gradient(to right, var(--grid-line-color) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line-color) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+/* Signature Klein Blue Glowing Dot */
+.logo-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--klein-blue);
+  box-shadow: 0 0 10px var(--klein-blue-glow);
+  display: inline-block;
+}
+
+/* macOS Window Toolbar Dots */
+.window-dot-red { background-color: #EF4444; width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.window-dot-yellow { background-color: #F59E0B; width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.window-dot-green { background-color: #10B981; width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 
 /* Custom editorial scrollbars */
 ::-webkit-scrollbar {
@@ -28,12 +55,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #E4E4E7;
+  background: #E2E8F0;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #D4D4D8;
+  background: #CBD5E1;
 }
 
 /* Mono badge utility */
@@ -42,7 +69,7 @@
   letter-spacing: -0.02em;
 }
 
-/* Subtle transitions */
+/* Subtle spring transitions */
 .transition-smooth {
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
