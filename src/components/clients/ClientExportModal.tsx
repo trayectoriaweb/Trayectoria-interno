@@ -129,7 +129,7 @@ ${
       onClose={onClose}
       title={`Exportar Contenido de la Web — ${client.fullName}`}
       subtitle="Generá el dossier completo con las respuestas del cliente listo para crear su sitio web."
-      maxWidth="3xl"
+      maxWidth="2xl"
     >
       <div className="space-y-4 pt-2">
         {/* Format Selector */}
