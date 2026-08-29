@@ -189,7 +189,7 @@ export const OnboardingContainer: React.FC<OnboardingContainerProps> = ({ client
             <span className="font-bold text-xs tracking-wider uppercase text-zinc-900 font-display">
               TRAYECTORIA
             </span>
-            <span className="text-[11px] text-zinc-400 block -mt-0.5">Onboarding de Cliente</span>
+            <span className="text-[11px] text-zinc-400 block -mt-0.5">Preparación de tu Sitio Web</span>
           </div>
         </div>
 
@@ -206,14 +206,11 @@ export const OnboardingContainer: React.FC<OnboardingContainerProps> = ({ client
           </div>
         )}
 
-        {/* Exit back to Admin panel button (for testing/admin preview) */}
-        {onExit && (
-          <button
-            onClick={onExit}
-            className="text-xs text-zinc-500 hover:text-zinc-900 font-medium px-2.5 py-1 rounded hover:bg-zinc-100 transition-colors"
-          >
-            ← Volver al Panel
-          </button>
+        {/* Client Reassurance */}
+        {currentStep === 0 && (
+          <span className="text-[11px] text-zinc-400 font-medium hidden sm:inline-block">
+            10–15 minutos • Guardado automático
+          </span>
         )}
       </header>
 

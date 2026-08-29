@@ -34,6 +34,7 @@ import { StatusPill } from '../common/StatusPill';
 import { DomainAlertBadge } from '../domains/DomainAlertBadge';
 import { ClientFormModal } from './ClientFormModal';
 import { ClientExportModal } from './ClientExportModal';
+import { ClientShareLinkModal } from './ClientShareLinkModal';
 import { ActivityModal } from '../activity/ActivityModal';
 
 interface ClientDetailViewProps {
@@ -63,6 +64,7 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [newNoteText, setNewNoteText] = useState('');
 
   const client = db.getClientById(clientId);
@@ -118,7 +120,7 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
     { id: 'overview', label: 'Resumen Operativo', icon: Layers },
     {
       id: 'onboarding',
-      label: 'Onboarding Cliente',
+      label: 'Cuestionario Web',
       icon: Sparkles,
       badge: client.onboardingStatus || (client.onboarding?.progressPercentage ? `${client.onboarding.progressPercentage}%` : 'Link'),
     },
@@ -221,18 +223,14 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
 
           {/* Quick Contact & Action Buttons */}
           <div className="flex flex-wrap items-center gap-2 pt-2 lg:pt-0 border-t lg:border-t-0 border-zinc-100">
-            {/* Onboarding Quick Action */}
+            {/* Share Form Quick Action */}
             <button
-              onClick={() => {
-                const url = `${window.location.origin}${window.location.pathname}#/onboarding/${client.id}`;
-                navigator.clipboard.writeText(url);
-                alert(`¡Enlace copiado para ${client.fullName}!\n\n${url}`);
-              }}
+              onClick={() => setIsShareModalOpen(true)}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-purple-200 bg-purple-50 text-purple-900 hover:bg-purple-100 text-xs font-semibold transition-colors shadow-2xs"
-              title="Copiar enlace de onboarding para enviar al cliente"
+              title="Generar enlace y mensaje para enviar al cliente por WhatsApp"
             >
               <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-              Copiar Link Onboarding
+              Enviar Link a Cliente
             </button>
 
             {onOpenOnboarding && (
@@ -1559,6 +1557,13 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
       <ClientExportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
+        client={client}
+      />
+
+      {/* Share Form Link with WhatsApp Modal */}
+      <ClientShareLinkModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
         client={client}
       />
     </div>

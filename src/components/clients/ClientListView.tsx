@@ -22,6 +22,7 @@ import { Button } from '../common/Button';
 import { StatusPill } from '../common/StatusPill';
 import { EmptyState } from '../common/EmptyState';
 import { DomainAlertBadge } from '../domains/DomainAlertBadge';
+import { ClientShareLinkModal } from './ClientShareLinkModal';
 
 interface ClientListViewProps {
   onSelectClient: (clientId: string) => void;
@@ -35,6 +36,7 @@ export const ClientListView: React.FC<ClientListViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('Todos');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
+  const [sharingClient, setSharingClient] = useState<Client | null>(null);
 
   const clients = db.getClients();
 
@@ -298,16 +300,12 @@ export const ClientListView: React.FC<ClientListViewProps> = ({
                       <td className="px-4 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-2">
                           <button
-                            onClick={() => {
-                              const url = `${window.location.origin}${window.location.pathname}#/onboarding/${client.id}`;
-                              navigator.clipboard.writeText(url);
-                              alert(`¡Enlace de Onboarding copiado para ${client.fullName}!\n\n${url}`);
-                            }}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded bg-purple-50 hover:bg-purple-100 text-purple-800 text-[11px] font-semibold transition-colors"
-                            title="Copiar Enlace de Onboarding para el Cliente"
+                            onClick={() => setSharingClient(client)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-900 text-[11px] font-bold transition-colors border border-purple-200 shadow-2xs"
+                            title="Generar enlace y mensaje de WhatsApp para el cliente"
                           >
                             <Sparkles className="w-3 h-3 text-purple-600" />
-                            Link Onboarding
+                            Enviar Link
                           </button>
 
                           <button
@@ -397,6 +395,15 @@ export const ClientListView: React.FC<ClientListViewProps> = ({
             );
           })}
         </div>
+      )}
+
+      {/* Share Modal */}
+      {sharingClient && (
+        <ClientShareLinkModal
+          isOpen={!!sharingClient}
+          onClose={() => setSharingClient(null)}
+          client={sharingClient}
+        />
       )}
     </div>
   );

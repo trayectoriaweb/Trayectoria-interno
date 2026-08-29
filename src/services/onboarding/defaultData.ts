@@ -53,7 +53,7 @@ export function createDefaultOnboardingData(initial?: Partial<OnboardingData['pe
       customColorNotes: '',
       referenceUrls: [],
       referenceNotes: '',
-      moodTags: ['Profesional', 'Minimalista'],
+      moodTags: ['Profesional'],
       negativePreferences: '',
       additionalPhotosNotes: '',
     },
@@ -65,20 +65,20 @@ export function calculateOnboardingProgress(data: OnboardingData): number {
   const totalWeight = 100;
 
   // Step 1: Personal (25 pts)
-  if (data.personal.firstName && data.personal.lastName) score += 10;
-  if (data.personal.profession) score += 10;
-  if (data.personal.email || data.personal.whatsapp) score += 5;
+  if (data.personal.firstName.trim() && data.personal.lastName.trim()) score += 10;
+  if (data.personal.profession.trim()) score += 10;
+  if (data.personal.email.trim() || data.personal.whatsapp.trim()) score += 5;
 
   // Step 2: Story (20 pts)
   if (data.story.presentation && data.story.presentation.trim().length > 10) score += 15;
   if (data.story.experiences.length > 0 || data.story.education.length > 0) score += 5;
 
   // Step 3: Offer (25 pts)
-  if (data.offer.services.some((s) => s.name.trim())) score += 20;
+  if (data.offer.services.some((s) => s.name.trim().length > 0)) score += 20;
   if (data.offer.specialties.length > 0 || data.offer.projects.length > 0) score += 5;
 
   // Step 4: Contact (15 pts)
-  if (data.contact.whatsapp || data.contact.email || data.contact.instagram) score += 15;
+  if (data.contact.whatsapp.trim() || data.contact.email.trim() || data.contact.instagram.trim()) score += 15;
 
   // Step 5: Style (15 pts)
   if (data.style.moodTags.length > 0) score += 10;
