@@ -33,6 +33,7 @@ import { Button } from '../common/Button';
 import { StatusPill } from '../common/StatusPill';
 import { DomainAlertBadge } from '../domains/DomainAlertBadge';
 import { ClientFormModal } from './ClientFormModal';
+import { ClientExportModal } from './ClientExportModal';
 import { ActivityModal } from '../activity/ActivityModal';
 
 interface ClientDetailViewProps {
@@ -61,6 +62,7 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [newNoteText, setNewNoteText] = useState('');
 
   const client = db.getClientById(clientId);
@@ -147,6 +149,14 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
         </button>
 
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsExportModalOpen(true)}
+            icon={<Sparkles className="w-3.5 h-3.5 text-purple-600" />}
+          >
+            Exportar para Crear Web
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -1543,6 +1553,13 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
         isOpen={isActivityModalOpen}
         onClose={() => setIsActivityModalOpen(false)}
         defaultClientId={client.id}
+      />
+
+      {/* Export Website Content Modal */}
+      <ClientExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        client={client}
       />
     </div>
   );
