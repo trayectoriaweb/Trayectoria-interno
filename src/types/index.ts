@@ -58,12 +58,70 @@ export interface ExperienceItem {
   year: string;
 }
 
-export interface PortfolioItem {
-  id: string;
-  title: string;
-  description: string;
-  imageUrl?: string;
-  url?: string;
+export type OnboardingStatus = 'No iniciado' | 'En progreso' | 'Información recibida' | 'En revisión';
+
+export interface OnboardingData {
+  step: number; // 0 to 6
+  status: OnboardingStatus;
+  progressPercentage: number;
+  lastSavedAt: string;
+  completedAt?: string;
+
+  personal: {
+    firstName: string;
+    lastName: string;
+    brandName: string;
+    preferredName: string;
+    profession: string;
+    specialty: string;
+    city: string;
+    email: string;
+    whatsapp: string;
+    photoStatus: 'uploaded' | 'send_later' | 'none';
+    photoUrl?: string;
+  };
+
+  story: {
+    presentation: string;
+    experiences: { id: string; place: string; role: string; year: string; description: string }[];
+    education: { id: string; institution: string; career: string; year: string }[];
+  };
+
+  offer: {
+    services: { id: string; name: string; description: string }[];
+    specialties: string[];
+    showProjects: boolean;
+    projects: { id: string; name: string; description: string; year: string; url?: string; images?: string[] }[];
+  };
+
+  contact: {
+    email: string;
+    whatsapp: string;
+    instagram: string;
+    linkedin: string;
+    website: string;
+    behance: string;
+    other: string;
+    primaryContactMethod: 'WhatsApp' | 'Email' | 'Instagram' | 'Formulario de contacto';
+    showLocation: boolean;
+    city: string;
+    province: string;
+    country: string;
+    address?: string;
+    googleMapsUrl?: string;
+  };
+
+  style: {
+    hasLogo: boolean;
+    logoUrl?: string;
+    colors: string[];
+    customColorNotes?: string;
+    referenceUrls: string[];
+    referenceNotes?: string;
+    moodTags: string[];
+    negativePreferences?: string;
+    additionalPhotosNotes?: string;
+  };
 }
 
 export interface ClientContent {
@@ -154,6 +212,14 @@ export interface Task {
   createdAt: string;
 }
 
+export interface PortfolioItem {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl?: string;
+  url?: string;
+}
+
 export interface Client {
   id: string; // TRAY-00001
   fullName: string;
@@ -169,6 +235,10 @@ export interface Client {
   createdAt: string; // YYYY-MM-DD
   status: ClientStatus;
   lastContact: string; // YYYY-MM-DD
+  
+  // Onboarding status and data
+  onboardingStatus?: OnboardingStatus;
+  onboarding?: OnboardingData;
   
   // Professional info
   specialties: string[];

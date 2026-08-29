@@ -24,6 +24,7 @@ import { TaskFormModal } from './components/tasks/TaskFormModal';
 import { ActivityListView } from './components/activity/ActivityListView';
 import { SettingsView } from './components/settings/SettingsView';
 import { LoginView } from './components/auth/LoginView';
+import { OnboardingContainer } from './components/onboarding/OnboardingContainer';
 
 import { db, GlobalSearchResult } from './services/db/repository';
 import { subscribeToDatabase } from './services/db/storage';
@@ -32,6 +33,7 @@ export function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
   const [currentSection, setCurrentSection] = useState<NavSection>('dashboard');
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [onboardingClientId, setOnboardingClientId] = useState<string | null>(null);
 
   // Global modals
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -51,6 +53,37 @@ export function App() {
       setDbTick((t) => t + 1);
     });
     return unsubscribe;
+  }, []);
+
+  // Listen to URL hash & params for direct /onboarding routes
+  useEffect(() => {
+    const parseUrlRoute = () => {
+      const hash = window.location.hash;
+      const search = window.location.search;
+      const path = window.location.pathname;
+
+      if (hash.startsWith('#/onboarding') || hash.startsWith('#onboarding')) {
+        const parts = hash.split('/');
+        const id = parts[2] || parts[1]?.replace('onboarding', '').replace('=', '') || '';
+        setOnboardingClientId(id || 'demo');
+      } else if (search.includes('onboarding=')) {
+        const params = new URLSearchParams(search);
+        const id = params.get('onboarding');
+        setOnboardingClientId(id || 'demo');
+      } else if (path.startsWith('/onboarding')) {
+        const parts = path.split('/');
+        const id = parts[2] || '';
+        setOnboardingClientId(id || 'demo');
+      }
+    };
+
+    parseUrlRoute();
+    window.addEventListener('hashchange', parseUrlRoute);
+    window.addEventListener('popstate', parseUrlRoute);
+    return () => {
+      window.removeEventListener('hashchange', parseUrlRoute);
+      window.removeEventListener('popstate', parseUrlRoute);
+    };
   }, []);
 
   // Global keyboard shortcut for Command Palette (Cmd/Ctrl+K)
@@ -86,6 +119,19 @@ export function App() {
       else setCurrentSection('clients');
     }
   };
+
+  // If visiting /onboarding directly or previewing
+  if (onboardingClientId) {
+    return (
+      <OnboardingContainer
+        clientId={onboardingClientId === 'demo' ? undefined : onboardingClientId}
+        onExit={() => {
+          window.location.hash = '';
+          setOnboardingClientId(null);
+        }}
+      />
+    );
+  }
 
   if (!isAuthenticated) {
     return <LoginView onLoginSuccess={() => setIsAuthenticated(true)} />;
@@ -200,6 +246,7 @@ export function App() {
                     clientId={selectedClientId}
                     onBack={() => setSelectedClientId(null)}
                     onNavigateSection={handleNavigate}
+                    onOpenOnboarding={(id) => setOnboardingClientId(id)}
                   />
                 ) : (
                   <ClientListView
