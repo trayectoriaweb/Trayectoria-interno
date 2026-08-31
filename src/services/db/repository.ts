@@ -669,8 +669,6 @@ export const db = {
     return results.slice(0, 15);
   },
 
-<<<<<<< HEAD
-=======
   // SYNC FROM SUPABASE CLOUD
   async pullFromSupabase(): Promise<boolean> {
     if (!isSupabaseConfigured) return false;
@@ -705,8 +703,6 @@ export const db = {
       return false;
     }
   },
-
->>>>>>> fd6976d (feat: soporte completo para web de negocios y profesionales, eliminacion modal y generacion prompt AI)
   // SYNC ONBOARDING SUBMISSIONS AUTOMATICALLY INTO CLIENTS
   syncOnboardingSubmissions(): number {
     const state = loadDatabase();
