@@ -267,6 +267,10 @@ Genera una sección de **4 a 5 Preguntas Frecuentes (FAQ)** respondiendo a las p
 7. **Banner Final de Conversión (CTA):** Llamado a la acción con gancho fuerte ("${contact.hook || '¿Listo para dar el siguiente paso? Escribinos por WhatsApp'}") y botón prominente.
 8. **Botón Flotante de WhatsApp:** Con animación sutil de pulso en la esquina inferior derecha.
 
+## ⚠️ REGLAS COMERCIALES & DE MARCA ESTRICTAS
+- **SIN E-COMMERCE / MUESTRA EXCLUSIVA:** La web funciona como una **vidriera digital o catálogo de muestra**. NO tiene carrito de compras ni pasarela de pago online. El 100% de las consultas, pedidos y ventas se inician y cierran exclusivamente por WhatsApp.
+- **POLÍTICA DE LOGOTIPOS (NO diseñamos logos):** Si el cliente no cuenta con archivo de logo, implementar su nombre comercial en texto limpio con tipografía moderna, sobria y excelente legibilidad.
+
 ---
 
 ## 💻 6. REGLAS DE ENTREGA DE CÓDIGO
