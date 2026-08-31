@@ -69,6 +69,29 @@ export const DomainListView: React.FC<DomainListViewProps> = ({
         </Button>
       </div>
 
+      {/* Nic.ar Client Instruction Banner */}
+      <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-base">🇦🇷</span>
+            <h4 className="text-sm font-bold text-zinc-900 font-display">
+              Instructivo de Registro de Dominios en Argentina (NIC.ar)
+            </h4>
+          </div>
+          <p className="text-xs text-zinc-600">
+            El dominio oficial se contrata con CUIL y Clave Fiscal. Los clientes pueden avanzar sin el dominio y enviarlo luego.
+          </p>
+        </div>
+        <a
+          href="https://www.youtube.com/watch?v=I23b8kxmP0o"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold shrink-0 transition-colors shadow-2xs"
+        >
+          <span>▶</span> Ver Video Tutorial de Nic.ar
+        </a>
+      </div>
+
       {/* Critical Expiration Legend Bar */}
       <div className="p-4 rounded-xl border border-zinc-200 bg-white shadow-2xs flex flex-wrap items-center justify-between gap-4 text-xs">
         <span className="font-semibold text-zinc-800">Semáforo de Vencimientos:</span>
