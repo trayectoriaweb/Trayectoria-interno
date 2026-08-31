@@ -18,200 +18,261 @@ export const ClientExportModal: React.FC<ClientExportModalProps> = ({
   const [activeTab, setActiveTab] = useState<'prompt' | 'json'>('prompt');
   const [copied, setCopied] = useState(false);
 
-  // Safely extract client data merging onboarding and content structures
-  const ob = client.onboarding;
-  const ct = client.content || ({} as any);
+  const ob = (client.onboarding || {}) as any;
+  const ct = (client.content || {}) as any;
 
-  const preferredName =
-    ob?.personal?.preferredName ||
-    ob?.personal?.brandName ||
-    ct?.identity?.name ||
-    client.commercialName ||
-    client.fullName;
+  // Check if client is a business or professional
+  const isBusiness =
+    client.contractedProduct?.toLowerCase().includes('negocio') ||
+    client.contractedProduct?.toLowerCase().includes('comercio') ||
+    ct?.serviceType === 'custom_business' ||
+    Boolean(ct?.businessInfo?.nombreNegocio);
 
-  const profession = ob?.personal?.profession || ct?.identity?.profession || client.profession;
-  const specialty =
-    ob?.personal?.specialty ||
-    ct?.presentation?.shortDescription ||
-    client.specialties?.join(', ') ||
-    'Profesional Independiente';
+  const biz = ct?.businessInfo || {};
 
-  const bio =
-    ob?.story?.presentation ||
-    ct?.presentation?.bio ||
-    client.bio ||
-    'Profesional con amplia trayectoria enfocado en brindar resultados excepcionales a sus clientes.';
+  const preferredName = isBusiness
+    ? biz.nombreNegocio || client.commercialName || client.fullName
+    : ob?.personal?.preferredName ||
+      ob?.personal?.brandName ||
+      ct?.identity?.name ||
+      client.commercialName ||
+      client.fullName;
 
-  const mainSlogan = ct?.presentation?.mainSlogan || preferredName;
+  const profession = isBusiness
+    ? biz.rubro || 'Comercio & Local'
+    : ob?.personal?.profession || ct?.identity?.profession || client.profession;
 
-  // Services
-  const services = (ob?.offer?.services && ob.offer.services.length > 0)
-    ? ob.offer.services.map((s) => ({ name: s.name, description: s.description || '', price: '' }))
+  const specialty = isBusiness
+    ? biz.rubro || 'Atención al público y catálogo'
+    : ob?.personal?.specialty ||
+      ct?.presentation?.shortDescription ||
+      client.specialties?.join(', ') ||
+      'Profesional Independiente';
+
+  const bio = isBusiness
+    ? biz.descripcionNegocio || 'Comercio enfocado en brindar la mejor calidad, atención y productos a sus clientes.'
+    : ob?.story?.presentation ||
+      ct?.presentation?.bio ||
+      client.bio ||
+      'Profesional con amplia trayectoria enfocado en brindar resultados excepcionales a sus clientes.';
+
+  const mainSlogan = isBusiness
+    ? biz.slogan || biz.ganchoComercial || preferredName
+    : ct?.presentation?.mainSlogan || preferredName;
+
+  // Services / Products
+  const rawServices = isBusiness
+    ? biz.serviciosProductos || []
+    : (ob?.offer?.services && ob.offer.services.length > 0)
+    ? ob.offer.services
     : (ct?.services?.items && ct.services.items.length > 0)
-    ? ct.services.items.map((s: any) => ({ name: s.name || s.title, description: s.description || '', price: s.price || '' }))
+    ? ct.services.items
+    : [];
+
+  const services = rawServices.length > 0
+    ? rawServices.map((s: any) => ({
+        name: s.name || s.nombre || s.title,
+        description: s.description || s.descripcion || '',
+        price: s.price || s.precio || '',
+      }))
     : [{ name: `Servicios de ${profession}`, description: 'Atención personalizada y asesoramiento integral.', price: '' }];
 
-  // Experiences
+  // Experiences & Education (for professionals)
   const experiences = (ob?.story?.experiences && ob.story.experiences.length > 0)
-    ? ob.story.experiences.map((e) => ({ role: e.role, place: e.place, year: e.year, description: e.description }))
+    ? ob.story.experiences.map((e: any) => ({ role: e.role, place: e.place, year: e.year, description: e.description }))
     : (ct?.experience?.items && ct.experience.items.length > 0)
     ? ct.experience.items.map((e: any) => ({ role: e.role, place: e.company || e.place, year: e.period || e.year, description: e.description }))
     : [];
 
-  // Education
   const education = (ob?.story?.education && ob.story.education.length > 0)
-    ? ob.story.education.map((ed) => ({ career: ed.career, institution: ed.institution, year: ed.year }))
+    ? ob.story.education.map((ed: any) => ({ career: ed.career, institution: ed.institution, year: ed.year }))
     : (ct?.education?.items && ct.education.items.length > 0)
     ? ct.education.items.map((ed: any) => ({ career: ed.degree || ed.career, institution: ed.institution, year: ed.year }))
     : [];
 
-  // Portfolio
+  // Portfolio / Projects
   const portfolio = (ob?.offer?.projects && ob.offer.projects.length > 0)
-    ? ob.offer.projects.map((p) => ({ title: p.name || (p as any).title, description: p.description, year: p.year, url: p.url }))
+    ? ob.offer.projects.map((p: any) => ({ title: p.name || p.title, description: p.description, year: p.year, url: p.url }))
     : (ct?.portfolio?.items && ct.portfolio.items.length > 0)
     ? ct.portfolio.items.map((p: any) => ({ title: p.title || p.name, description: p.description, year: p.year, url: p.link || p.url }))
     : [];
 
-  // Contact
+  // Contact & Location
   const contact = {
-    whatsapp: ob?.contact?.whatsapp || ct?.contact?.whatsapp || client.whatsapp || '',
-    email: ob?.contact?.email || ct?.contact?.email || client.email || '',
-    instagram: ob?.contact?.instagram || ct?.contact?.instagram || client.instagram || '',
-    linkedin: ob?.contact?.linkedin || ct?.contact?.linkedin || client.linkedin || '',
-    city: ob?.contact?.city || ct?.contact?.location || client.city || 'Buenos Aires',
-    country: ob?.contact?.country || client.country || 'Argentina',
-    primaryChannel: ob?.contact?.primaryContactMethod || 'whatsapp',
+    whatsapp: isBusiness ? (biz.whatsapp || client.whatsapp || '') : (ob?.contact?.whatsapp || ct?.contact?.whatsapp || client.whatsapp || ''),
+    email: isBusiness ? (biz.email || client.email || '') : (ob?.contact?.email || ct?.contact?.email || client.email || ''),
+    instagram: isBusiness ? (biz.instagram || client.instagram || '') : (ob?.contact?.instagram || ct?.contact?.instagram || client.instagram || ''),
+    linkedin: isBusiness ? '' : (ob?.contact?.linkedin || ct?.contact?.linkedin || client.linkedin || ''),
+    city: isBusiness ? (biz.ciudad || client.city || 'Buenos Aires') : (ob?.contact?.city || ct?.contact?.location || client.city || 'Buenos Aires'),
+    country: client.country || 'Argentina',
+    address: isBusiness ? (biz.direccion || '') : (ob?.contact?.address || ct?.contact?.location || ''),
+    mapsUrl: isBusiness ? (biz.googleMapsUrl || '') : (ob?.contact?.googleMapsUrl || ct?.contact?.googleMapsUrl || ''),
+    primaryChannel: isBusiness ? (biz.canalPrincipal || 'whatsapp') : (ob?.contact?.primaryContactMethod || 'whatsapp'),
+    hours: isBusiness ? biz.horarios : null,
+    promo: isBusiness ? biz.promociones : null,
+    hook: isBusiness ? biz.ganchoComercial : null,
   };
 
   // Visual Style
   const moodTags = ob?.style?.moodTags?.length
     ? ob.style.moodTags.join(', ')
-    : 'Profesional, Minimalista, Elegante, Confiable, Alta Conversión';
+    : 'Profesional, Moderno, Confiable, Alta Conversión, Visualmente Limpio';
 
-  const colors = ob?.style?.customColorNotes || (ob?.style?.colors?.length
+  const colors = isBusiness
+    ? biz.colorPrincipal ? `${biz.colorPrincipal.name} (${biz.colorPrincipal.hex})` : 'Azul Klein (#0033FF)'
+    : ob?.style?.customColorNotes || (ob?.style?.colors?.length
     ? ob.style.colors.join(', ')
     : ct?.identity?.colors?.length
     ? ct.identity.colors.join(', ')
     : 'Azul Klein (#0033FF), Blanco cálido (#FAFAFA), Grafito (#18181B)');
 
-  const negativePreferences = ob?.style?.negativePreferences || 'No usar fondos negros pesados, no usar textos excesivamente largos, evitar interfaces genéricas.';
+  const negativePreferences = isBusiness
+    ? biz.loQueNoQuiere || 'Evitar fondos oscuros pesados, interfaces lentas o textos excesivamente largos.'
+    : ob?.style?.negativePreferences || 'No usar fondos negros pesados, no usar textos excesivamente largos, evitar interfaces genéricas.';
+
   const referenceUrls = ob?.style?.referenceUrls?.length ? ob.style.referenceUrls.join(', ') : 'Ninguno especificado.';
 
-  // GENERATE THE MASTER PROMPT FOR AI
+  // GENERATE THE MASTER PROMPT FOR AI WITH ADVANCED SEO & PERSUASIVE COPYWRITING
   const generateMarkdownPrompt = () => {
-    return `# 🚀 MEGA PROMPT PARA CREAR SITIO WEB DE ALTA CONVERSIÓN
+    return `# 🚀 MEGA PROMPT: SITIO WEB DE ALTA CONVERSIÓN & SEO AVANZADO (72 HS)
 
-Actúa como un **Diseñador Web UI/UX Senior y Desarrollador Frontend Experto** (especializado en Astro, HTML5 semántico, Tailwind CSS y diseño editorial contemporáneo).
+Actúa como un **Lead Frontend Architect, Copywriter de Respuesta Directa y Especialista en SEO Técnico & Local Senior** (especializado en Astro / HTML5 semántico, Tailwind CSS y diseño editorial contemporáneo).
 
-Tu tarea es construir el sitio web profesional completo, optimizado para móvil y de alta conversión para el siguiente cliente en 72hs.
+Tu misión es programar y redactar el sitio web completo, con **redacción persuasiva dirigida al avatar/cliente ideal**, **SEO técnico y local optimizado para primeras posiciones en Google**, y una tasa de conversión máxima hacia el canal de contacto.
 
 ---
 
-## 👤 FICHA DEL CLIENTE & MARCA
+## 👤 1. FICHA DEL CLIENTE & ESTRATEGIA DE MARCA
+- **Tipo de Proyecto:** ${isBusiness ? '🏢 Web Comercial para Negocio / Local Físico' : '✦ Web de Autoridad para Profesional Independiente'}
 - **Nombre en el Sitio:** ${preferredName}
-- **Titular / Profesión:** ${profession}
-- **Especialidad Principal:** ${specialty}
-- **Ubicación:** ${contact.city}, ${contact.country}
+- **Rubro / Profesión:** ${profession}
+- **Especialidad / Enfoque:** ${specialty}
+- **Ciudad & País:** ${contact.city}, ${contact.country} ${contact.address ? `(Dirección: ${contact.address})` : ''}
 - **Dominio Asignado:** ${client.primaryDomain || `${preferredName.toLowerCase().replace(/[^a-z0-9]/g, '')}.com.ar`}
-- **Canal de Conversión Principal:** ${contact.primaryChannel.toUpperCase()} (El botón de acción más visible debe dirigir a este canal)
+- **Canal de Conversión Principal:** **${contact.primaryChannel.toUpperCase()}** (El botón principal flotante y de acción debe dirigir inmediatamente aquí).
+${contact.hours ? `- **Horarios de Atención:** L-V: ${contact.hours.lunesViernes || 'Consultar'}, Sáb: ${contact.hours.sabados || 'Consultar'}, Dom: ${contact.hours.domingosFeriados || 'Cerrado'}` : ''}
+${contact.mapsUrl ? `- **Enlace a Google Maps:** ${contact.mapsUrl}` : ''}
+${contact.promo ? `- **Promoción / Oferta Vigente:** ${contact.promo}` : ''}
+${contact.hook ? `- **Gancho Comercial:** "${contact.hook}"` : ''}
 
 ---
 
-## ✍️ COPYWRITING & CONTENIDO
+## 🎯 2. COPYWRITING PERSUASIVO & DEFINICIÓN DEL AVATAR (CLIENTE IDEAL)
 
-### Slogan / Propuesta de Valor
-> "${mainSlogan}"
+### Perfil del Cliente Ideal (Buyer Persona)
+- **¿Quién es?:** Persona o empresa en **${contact.city} y alrededores** que busca resolver una necesidad urgente o específica vinculada a **${profession}**.
+- **Dolores & Frustraciones actuales:** Miedo a perder tiempo o dinero con servicios informales, falta de claridad en precios o procesos, dificultad para conseguir turnos/atención rápida, o malas experiencias pasadas.
+- **Deseos & Objetivos:** Encontrar a un referente confiable, profesional y cercano que le brinde soluciones claras, respuesta inmediata por WhatsApp y un trato de excelencia.
+- **Tono de Comunicación:** Cercano pero sumamente profesional, seguro, empático y orientado a la acción (Fórmula PAS: *Problema -> Agitación -> Solución*).
 
-### Biografía y Presentación
-"${bio}"
-
-### Servicios a Destacar (${services.length})
+### Copywriting por Secciones
+- **Slogan / Propuesta de Valor Central:**
+  > "${mainSlogan}"
+- **Historia / Presentación:**
+  "${bio}"
+- **Servicios / Oferta (${services.length} items):**
 ${services
   .map(
-    (s, idx) => `
-#### ${idx + 1}. ${s.name}
-- **Descripción:** ${s.description || 'Asesoramiento y servicio integral personalizado.'}
-${s.price ? `- **Inversión / Honorarios:** ${s.price}` : ''}
-`
+    (s: any, idx: number) => `  ${idx + 1}. **${s.name}**
+     - *Beneficio para el cliente:* ${s.description || 'Solución integral personalizada con atención dedicada.'}
+     ${s.price ? `- *Inversión:* ${s.price}` : ''}`
   )
-  .join('')}
-
-${
-  experiences.length > 0
-    ? `### Trayectoria & Experiencia Laboral
-${experiences.map((e) => `- **${e.role}** en *${e.place}* (${e.year})${e.description ? `: ${e.description}` : ''}`).join('\n')}`
-    : ''
-}
-
-${
-  education.length > 0
-    ? `### Formación & Certificaciones
-${education.map((ed) => `- **${ed.career}** — *${ed.institution}* (${ed.year})`).join('\n')}`
-    : ''
-}
-
-${
-  portfolio.length > 0
-    ? `### Portfolio & Casos Destacados
-${portfolio.map((p) => `- **${p.title}** (${p.year || 'Reciente'}): ${p.description || 'Proyecto destacado'}${p.url ? ` | Link: ${p.url}` : ''}`).join('\n')}`
-    : ''
-}
-
-### Información de Contacto y Enlaces
-- **WhatsApp:** ${contact.whatsapp ? `${contact.whatsapp} (Generar link directo: https://wa.me/${contact.whatsapp.replace(/[^0-9]/g, '')}?text=Hola%20${encodeURIComponent(preferredName)},%20te%20contacto%20desde%20tu%20sitio%20web)` : 'No especificado'}
-- **Email:** ${contact.email ? `${contact.email}` : 'No especificado'}
-- **Instagram:** ${contact.instagram ? `@${contact.instagram.replace('@', '')}` : 'No especificado'}
-- **LinkedIn:** ${contact.linkedin || 'No especificado'}
-- **Ubicación:** ${contact.city}, ${contact.country}
+  .join('\n')}
 
 ---
 
-## 🎨 DIRECCIÓN DE ARTE & LINEAMIENTOS VISUALES
-- **Sensación / Mood:** ${moodTags}
-- **Paleta de Colores:** ${colors}
-- **Tipografía Recomendada:** Plus Jakarta Sans (Headers y Body) con acentos limpios.
-- **Sitios de Referencia / Inspiración:** ${referenceUrls}
-- ⚠️ **REGLA DE ORO (Lo que NO quiere el cliente):** ${negativePreferences}
+## 🔍 3. ESPECIFICACIONES DE SEO AVANZADO (TÉCNICO, LOCAL & ON-PAGE)
+
+Debes incluir en el código HTML/Head todas las siguientes optimizaciones de nivel profesional:
+
+### A. Meta Tags & Snippet de Google (CTR Optimizado)
+\`\`\`html
+<title>${profession} en ${contact.city} | ${preferredName}</title>
+<meta name="description" content="${preferredName} en ${contact.city}. ${specialty}. ${mainSlogan.substring(0, 80)}. ¡Consultá ahora por WhatsApp y coordiná tu atención!" />
+<link rel="canonical" href="https://${client.primaryDomain || `${preferredName.toLowerCase().replace(/[^a-z0-9]/g, '')}.com.ar`}/" />
+<meta name="robots" content="index, follow" />
+\`\`\`
+
+### B. Open Graph & Twitter Cards (Para compartir en WhatsApp, Instagram y LinkedIn)
+\`\`\`html
+<meta property="og:locale" content="es_AR" />
+<meta property="og:type" content="${isBusiness ? 'business.business' : 'profile'}" />
+<meta property="og:title" content="${profession} en ${contact.city} | ${preferredName}" />
+<meta property="og:description" content="${mainSlogan}" />
+<meta property="og:url" content="https://${client.primaryDomain || `${preferredName.toLowerCase().replace(/[^a-z0-9]/g, '')}.com.ar`}/" />
+<meta property="og:site_name" content="${preferredName}" />
+<meta name="twitter:card" content="summary_large_image" />
+\`\`\`
+
+### C. Marcado Estructurado Schema.org JSON-LD (Rich Snippets para Google)
+Incluye obligatoriamente el siguiente script en el \`<head>\`:
+\`\`\`html
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "${isBusiness ? 'LocalBusiness' : 'ProfessionalService'}",
+  "name": "${preferredName}",
+  "description": "${bio.replace(/"/g, '\\"')}",
+  "url": "https://${client.primaryDomain || `${preferredName.toLowerCase().replace(/[^a-z0-9]/g, '')}.com.ar`}/",
+  "telephone": "${contact.whatsapp}",
+  "email": "${contact.email}",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "${contact.address || 'Zona céntrica'}",
+    "addressLocality": "${contact.city}",
+    "addressCountry": "AR"
+  },
+  ${contact.mapsUrl ? `"hasMap": "${contact.mapsUrl}",` : ''}
+  "priceRange": "$$",
+  "sameAs": [
+    ${contact.instagram ? `"https://instagram.com/${contact.instagram.replace('@', '')}"` : ''}
+  ]
+}
+</script>
+\`\`\`
+
+### D. Preguntas Frecuentes con FAQPage Schema
+Genera una sección de **4 a 5 Preguntas Frecuentes (FAQ)** respondiendo a las principales objeciones del avatar (medios de pago, cómo coordinar un turno o pedido, tiempos de respuesta, ubicación) e incluye el bloque Schema.org \`FAQPage\` correspondiente.
+
+### E. Jerarquía de Encabezados (H1, H2, H3)
+- **H1 único:** Debe contener la keyword de mayor volumen de búsqueda transaccional (ej: *"${profession} en ${contact.city} — ${preferredName}"*).
+- **H2:** Enfocados en palabras clave secundarias e intenciones de búsqueda (ej: *"Nuestros Servicios de ${specialty}"*, *"Por qué elegirnos"*, *"Ubicación y Horarios de Atención"*, *"Preguntas Frecuentes"*).
+- **H3:** Títulos de cada servicio o producto individual.
 
 ---
 
-## 📐 ARQUITECTURA DE PÁGINA REQUERIDA (SECCIONES)
-
-1. **Header / Navbar:**
-   - Nombre de marca limpio + indicador de disponibilidad en vivo.
-   - Enlaces a secciones (Sobre mí, Servicios, Trayectoria, Contacto).
-   - Botón CTA destacado a WhatsApp.
-
-2. **Hero Section (Impacto Inmediato):**
-   - Badge de especialidad (${specialty}).
-   - Titular de alta conversión con el nombre y propuesta de valor.
-   - Subtítulo explicativo conciso.
-   - 2 Botones de acción: Primario (WhatsApp directo) + Secundario (Ver servicios / casos).
-   - Indicadores de confianza (Ubicación, años de experiencia o matrículas).
-
-3. **Sección de Servicios:**
-   - Cards con microinteracciones sutiles (hover limpio, borders sutiles).
-   - Título claro, párrafo descriptivo y botón directo para consultar sobre ese servicio.
-
-4. **Sobre Mí & Trayectoria:**
-   - Bio escrita en primera o tercera persona según el tono.
-   - Grid o timeline con experiencia y formación académica.
-
-5. **Casos / Portfolio (si aplica):**
-   - Tarjetas elegantes con descripción del trabajo realizado.
-
-6. **Sección Final de Conversión (Footer / CTA):**
-   - Bloque de cierre con llamada a la acción clara para iniciar contacto.
-   - Datos directos de WhatsApp, Email y Redes.
-   - Copyright © ${new Date().getFullYear()} ${preferredName}. Diseñado por Trayectoria.
+## 🎨 4. DIRECCIÓN DE ARTE & IDENTIDAD VISUAL
+- **Paleta de Color Principal:** **${colors}** (Usar como color primario y acento de botones).
+- **Sensación / Vibra:** ${moodTags}
+- **Tipografía Recomendada:** Plus Jakarta Sans o Inter (limpia, moderna, excelente legibilidad en mobile).
+- **Inspiración:** ${referenceUrls}
+- ⚠️ **LO QUE NO QUIERE EL CLIENTE (Prohibido usar):** ${negativePreferences}
 
 ---
 
-## 💻 REQUISITOS TÉCNICOS DE CÓDIGO
-- Genera código completo, modular y listo para producción.
-- 100% responsivo (Mobile-first, probado para pantallas de 375px a 1920px).
-- Usa Tailwind CSS para el estilado con clases limpias y modernas.
-- Asegura accesibilidad (WCAG 2.1 AA) y SEO con OpenGraph tags y Schema.org LocalBusiness/Person.
+## 📐 5. ESTRUCTURA DE LA PÁGINA (MOBILE-FIRST)
+
+1. **Header Fijo / Sticky:** Logotipo tipográfico moderno + badge "🟢 Disponible hoy" + botón CTA directo a WhatsApp.
+2. **Hero Section de Alto Impacto:**
+   - Pill con la especialidad destacada.
+   - Titular principal H1 irresistible orientado a beneficios.
+   - Subtítulo que derriba la principal objeción del cliente.
+   - 2 Botones: Principal (WhatsApp directo con mensaje prearmado) y Secundario (Ver servicios).
+   - Métricas de confianza (Años de trayectoria, clientes atendidos o ubicación).
+3. **Sección de Propuesta de Valor (Dolor -> Solución):** 3 pilares clave de por qué el cliente debe elegir este servicio.
+4. **Catálogo de Servicios / Productos (${services.length} items):**
+   - Tarjetas con microinteracción hover, descripción clara y botón individual "Consultar por este servicio".
+5. ${isBusiness ? '**Local Físico, Horarios & Mapa:** Dirección completa, botón para abrir en Google Maps y tabla de horarios semanales.' : '**Trayectoria & Autoridad:** Bio profesional, años de experiencia y credenciales destacadas.'}
+6. **Sección FAQ (Preguntas Frecuentes):** Acordeón interactivo con Schema FAQPage para rich snippets.
+7. **Banner Final de Conversión (CTA):** Llamado a la acción con gancho fuerte ("${contact.hook || '¿Listo para dar el siguiente paso? Escribinos por WhatsApp'}") y botón prominente.
+8. **Botón Flotante de WhatsApp:** Con animación sutil de pulso en la esquina inferior derecha.
+
+---
+
+## 💻 6. REGLAS DE ENTREGA DE CÓDIGO
+- Entrega el código **completo, funcional y sin placeholders** en un único archivo HTML con Tailwind CSS (vía CDN o clases estándar) y Vanilla JS.
+- **Rendimiento Máximo:** Todas las imágenes con atributos \`alt\` descriptivos, \`width\`, \`height\` y \`loading="lazy"\`.
+- Enlaces de WhatsApp configurados con la API oficial: \`https://wa.me/${contact.whatsapp.replace(/[^0-9]/g, '')}?text=Hola%20${encodeURIComponent(preferredName)},%20te%20contacto%20desde%20tu%20sitio%20web\`
 `;
   };
 
