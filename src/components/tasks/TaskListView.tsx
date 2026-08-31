@@ -81,37 +81,62 @@ export const TaskListView: React.FC<TaskListViewProps> = ({
         </div>
 
         {/* State filters */}
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => setFilterMode('pending')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              filterMode === 'pending'
-                ? 'bg-zinc-900 text-white font-semibold'
-                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-            }`}
-          >
-            Pendientes
-          </button>
-          <button
-            onClick={() => setFilterMode('completed')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              filterMode === 'completed'
-                ? 'bg-zinc-900 text-white font-semibold'
-                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-            }`}
-          >
-            Completadas
-          </button>
-          <button
-            onClick={() => setFilterMode('all')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              filterMode === 'all'
-                ? 'bg-zinc-900 text-white font-semibold'
-                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-            }`}
-          >
-            Todas
-          </button>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex items-center gap-1 bg-zinc-100 p-1 rounded-lg">
+            <button
+              onClick={() => setFilterMode('pending')}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                filterMode === 'pending'
+                  ? 'bg-white text-zinc-900 font-semibold shadow-2xs'
+                  : 'text-zinc-600 hover:text-zinc-900'
+              }`}
+            >
+              Pendientes
+            </button>
+            <button
+              onClick={() => setFilterMode('completed')}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                filterMode === 'completed'
+                  ? 'bg-white text-zinc-900 font-semibold shadow-2xs'
+                  : 'text-zinc-600 hover:text-zinc-900'
+              }`}
+            >
+              Completadas
+            </button>
+            <button
+              onClick={() => setFilterMode('all')}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                filterMode === 'all'
+                  ? 'bg-white text-zinc-900 font-semibold shadow-2xs'
+                  : 'text-zinc-600 hover:text-zinc-900'
+              }`}
+            >
+              Todas
+            </button>
+          </div>
+
+          <div className="h-4 w-px bg-zinc-200 mx-1 hidden sm:block"></div>
+
+          {/* Priority filter pills */}
+          <div className="flex items-center gap-1">
+            {(['Todos', 'Urgente', 'Alta', 'Media', 'Baja'] as const).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPriorityFilter(p)}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                  priorityFilter === p
+                    ? p === 'Urgente'
+                      ? 'bg-rose-100 text-rose-800 font-bold border border-rose-200'
+                      : p === 'Alta'
+                      ? 'bg-amber-100 text-amber-800 font-bold border border-amber-200'
+                      : 'bg-zinc-900 text-white font-bold'
+                    : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

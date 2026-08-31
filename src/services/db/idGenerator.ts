@@ -18,6 +18,25 @@ export function generateNextClientId(existingClients: Client[]): string {
       if (num > maxNum) maxNum = num;
     }
   }
+
+  // Also check localStorage keys to avoid collisions with in-progress onboarding links
+  try {
+    if (typeof localStorage !== 'undefined') {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('trayectoria_onboarding_TRAY-')) {
+          const match = key.match(/TRAY-(\d+)/i);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (num > maxNum) maxNum = num;
+          }
+        }
+      }
+    }
+  } catch (e) {
+    // Ignore in non-browser environments
+  }
+
   const nextNum = maxNum + 1;
   return `TRAY-${String(nextNum).padStart(5, '0')}`;
 }

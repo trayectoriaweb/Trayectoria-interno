@@ -51,8 +51,11 @@ export function App() {
   const [, setDbTick] = useState(0);
 
   useEffect(() => {
-    // Initial sync of any submitted onboarding
+    // Initial sync of any submitted onboarding + Supabase cloud pull
     db.syncOnboardingSubmissions();
+    db.pullFromSupabase().then(() => {
+      setDbTick((t) => t + 1);
+    });
 
     const unsubscribe = subscribeToDatabase(() => {
       setDbTick((t) => t + 1);

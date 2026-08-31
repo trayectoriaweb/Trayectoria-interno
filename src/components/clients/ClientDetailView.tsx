@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { db, calculateContentCompleteness, getDomainExpirationInfo } from '../../services/db/repository';
 import { Client, Project, WebSite, Domain, Task, ChecklistItem } from '../../types';
+import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { StatusPill } from '../common/StatusPill';
 import { DomainAlertBadge } from '../domains/DomainAlertBadge';
@@ -65,9 +66,10 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [newNoteText, setNewNoteText] = useState('');
 
-  const client = db.getClientById(clientId);
+  const rawClient = db.getClientById(clientId);
   const projects = db.getProjectsByClient(clientId);
   const webs = db.getWebsByClient(clientId);
   const domains = db.getDomainsByClient(clientId);
@@ -75,9 +77,9 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
   const notes = db.getNotesByClient(clientId);
   const tasks = db.getTasks().filter((t) => t.clientId === clientId);
 
-  if (!client) {
+  if (!rawClient) {
     return (
-      <div className="p-8 text-center">
+      <div className="p-8 text-center font-sans">
         <p className="text-zinc-500">Cliente no encontrado (ID: {clientId})</p>
         <Button variant="outline" size="sm" onClick={onBack} className="mt-4">
           Volver al Directorio
@@ -85,6 +87,19 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
       </div>
     );
   }
+
+  const client: Client = {
+    ...rawClient,
+    content: rawClient.content && rawClient.content.identity ? rawClient.content : {
+      identity: { name: rawClient.commercialName || rawClient.fullName, profession: rawClient.profession, colors: ['#0033FF'], fonts: 'Plus Jakarta Sans', isComplete: false },
+      presentation: { bio: rawClient.bio || '', shortDescription: rawClient.shortDescription || '', mainSlogan: '', isComplete: false },
+      services: { items: [], isComplete: false },
+      education: { items: [], isComplete: false },
+      experience: { items: [], isComplete: false },
+      contact: { whatsapp: rawClient.whatsapp || '', email: rawClient.email || '', location: rawClient.city || '', isComplete: false },
+      portfolio: { items: [], isComplete: false },
+    },
+  };
 
   const primaryProject = projects[0];
   const contentCompleteness = calculateContentCompleteness(client.content);
@@ -114,6 +129,32 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
       },
     };
     db.updateClient(client.id, { content: updatedContent });
+  };
+
+  const handleCreateProject = () => {
+    const today = new Date().toISOString().split('T')[0];
+    db.createProject({
+      clientId: client.id,
+      clientName: client.fullName,
+      name: `${client.commercialName || client.fullName} — Web Principal`,
+      projectType: 'Sitio Web Completo',
+      status: 'En diseño',
+      startDate: today,
+      estimatedDeliveryDate: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
+      price: client.price || '$95 USD',
+      responsible: 'Operaciones Trayectoria',
+      notes: 'Proyecto web creado desde la ficha del cliente.',
+      checklist: [
+        { id: 'c1', label: 'Validar cuestionario y contenidos enviados', category: 'CLIENTE', completed: true },
+        { id: 'c2', label: 'Registrar / Delegar dominio en NIC.AR', category: 'CLIENTE', completed: false },
+        { id: 'c3', label: 'Diseñar arquitectura editorial & Hero section', category: 'DISEÑO', completed: false },
+        { id: 'c4', label: 'Definir paleta, tipografía Plus Jakarta Sans & Assets', category: 'DISEÑO', completed: false },
+        { id: 'c5', label: 'Maquetar componentes con Tailwind CSS', category: 'DESARROLLO', completed: false },
+        { id: 'c6', label: 'Configurar enlaces a WhatsApp, Email y Redes', category: 'DESARROLLO', completed: false },
+        { id: 'c7', label: 'Testing responsivo en móvil y escritorio', category: 'PUBLICACIÓN', completed: false },
+        { id: 'c8', label: 'Deploy en Cloudflare Pages & Configurar SSL', category: 'PUBLICACIÓN', completed: false },
+      ],
+    });
   };
 
   const tabs: { id: TabType; label: string; icon: any; count?: number; badge?: string }[] = [
@@ -151,14 +192,14 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
         </button>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
+          <button
             onClick={() => setIsExportModalOpen(true)}
-            icon={<Sparkles className="w-3.5 h-3.5 text-purple-600" />}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0033FF] hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-2xs cursor-pointer"
+            title="Generar prompt estructurado para Claude, Antigravity o ChatGPT"
           >
-            Exportar para Crear Web
-          </Button>
+            <Sparkles className="w-3.5 h-3.5" />
+            ⚡ Copiar Prompt para IA
+          </button>
           <Button
             variant="outline"
             size="sm"
@@ -175,6 +216,13 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
           >
             + Registrar Actividad
           </Button>
+          <button
+            onClick={() => setIsDeleteModalOpen(true)}
+            className="p-2 rounded-lg border border-zinc-200 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-colors"
+            title="Eliminar Cliente"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
@@ -412,167 +460,296 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
           </div>
 
           {/* Detailed Responses Sections */}
-          {client.onboarding ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* 1. Datos Personales & Nombre en Web */}
-              <div className="p-4 rounded-xl border border-zinc-200 bg-white space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900 border-b border-zinc-100 pb-2">
-                  1. Sobre el Cliente & Nombre en Web
-                </h4>
-                <div className="space-y-2 text-xs">
-                  <div>
-                    <span className="text-zinc-400 block text-[10px] uppercase">Nombre Comercial / Web:</span>
-                    <span className="font-bold text-zinc-900">
-                      {client.onboarding.personal.preferredName || client.onboarding.personal.brandName || client.fullName}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-zinc-400 block text-[10px] uppercase">Profesión & Especialidad:</span>
-                    <span className="text-zinc-800">
-                      {client.onboarding.personal.profession} — {client.onboarding.personal.specialty || 'General'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-zinc-400 block text-[10px] uppercase">Foto Profesional:</span>
-                    <span className="text-zinc-700">
-                      {client.onboarding.personal.photoStatus === 'uploaded'
-                        ? client.onboarding.personal.photoUrl
-                          ? `Enlace: ${client.onboarding.personal.photoUrl}`
-                          : 'Cargada'
-                        : client.onboarding.personal.photoStatus === 'send_later'
-                        ? 'La enviará después por WhatsApp'
-                        : 'No tiene foto'}
-                    </span>
-                  </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* 1. Datos Personales & Nombre en Web */}
+            <div className="p-4 rounded-xl border border-zinc-200 bg-white space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900 border-b border-zinc-100 pb-2 flex items-center justify-between">
+                <span>1. Sobre el Cliente & Nombre en Web</span>
+                <span className="text-[10px] text-zinc-400 font-normal">Paso 1</span>
+              </h4>
+              <div className="space-y-2 text-xs">
+                <div>
+                  <span className="text-zinc-400 block text-[10px] uppercase">Nombre Comercial / Web:</span>
+                  <span className="font-bold text-zinc-900">
+                    {client.onboarding?.personal?.preferredName || client.onboarding?.personal?.brandName || client.content.identity.name || client.commercialName || client.fullName}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-zinc-400 block text-[10px] uppercase">Profesión & Especialidad:</span>
+                  <span className="text-zinc-800">
+                    {client.onboarding?.personal?.profession || client.content.identity.profession || client.profession} — {client.onboarding?.personal?.specialty || client.content.presentation.shortDescription || client.specialties.join(', ') || 'General'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-zinc-400 block text-[10px] uppercase">Foto Profesional:</span>
+                  <span className="text-zinc-700">
+                    {client.onboarding?.personal?.photoStatus === 'uploaded'
+                      ? client.onboarding.personal.photoUrl
+                        ? `Enlace: ${client.onboarding.personal.photoUrl}`
+                        : 'Cargada'
+                      : client.onboarding?.personal?.photoStatus === 'send_later'
+                      ? 'La enviará después por WhatsApp'
+                      : client.photoUrl ? 'Foto cargada en sistema' : 'No tiene foto'}
+                  </span>
                 </div>
               </div>
+            </div>
 
-              {/* 2. Presentación & Historia */}
-              <div className="p-4 rounded-xl border border-zinc-200 bg-white space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900 border-b border-zinc-100 pb-2">
-                  2. Presentación & Historia
-                </h4>
-                <div className="space-y-2 text-xs">
-                  <div>
-                    <span className="text-zinc-400 block text-[10px] uppercase">Presentación / Bio:</span>
-                    <p className="text-zinc-700 italic bg-zinc-50 p-2.5 rounded border border-zinc-100 mt-1">
-                      "{client.onboarding.story.presentation || 'Sin presentación cargada'}"
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-zinc-400 block text-[10px] uppercase">
-                      Experiencias ({client.onboarding.story.experiences.length}):
-                    </span>
-                    {client.onboarding.story.experiences.map((exp, i) => (
-                      <span key={i} className="block text-zinc-800 font-medium">
-                        • {exp.role} en {exp.place} ({exp.year})
+            {/* 2. Presentación & Historia (Incluye Experiencia y Educación) */}
+            <div className="p-4 rounded-xl border border-zinc-200 bg-white space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900 border-b border-zinc-100 pb-2 flex items-center justify-between">
+                <span>2. Presentación & Historia</span>
+                <span className="text-[10px] text-zinc-400 font-normal">Paso 2</span>
+              </h4>
+              <div className="space-y-2 text-xs">
+                <div>
+                  <span className="text-zinc-400 block text-[10px] uppercase">Presentación / Bio:</span>
+                  <p className="text-zinc-700 italic bg-zinc-50 p-2.5 rounded border border-zinc-100 mt-1">
+                    "{client.onboarding?.story?.presentation || client.content.presentation.bio || client.bio || 'Sin presentación cargada'}"
+                  </p>
+                </div>
+
+                {/* Experiencias */}
+                <div>
+                  <span className="text-zinc-400 block text-[10px] uppercase">
+                    Experiencias ({client.onboarding?.story?.experiences?.length || client.content.experience.items.length}):
+                  </span>
+                  {(client.onboarding?.story?.experiences && client.onboarding.story.experiences.length > 0) ? (
+                    client.onboarding.story.experiences.map((exp, i) => (
+                      <span key={i} className="block text-zinc-800 font-medium mt-0.5">
+                        • {exp.role} en {exp.place} ({exp.year}){exp.description ? `: ${exp.description}` : ''}
                       </span>
-                    ))}
-                  </div>
+                    ))
+                  ) : client.content.experience.items.length > 0 ? (
+                    client.content.experience.items.map((exp: any, i: number) => (
+                      <span key={i} className="block text-zinc-800 font-medium mt-0.5">
+                        • {exp.role} en {exp.company || exp.place} ({exp.period || exp.year})
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-zinc-400 italic">No especificadas</span>
+                  )}
+                </div>
+
+                {/* Formación / Educación */}
+                <div className="pt-1 border-t border-zinc-100">
+                  <span className="text-zinc-400 block text-[10px] uppercase">
+                    Formación & Títulos ({client.onboarding?.story?.education?.length || client.content.education.items.length}):
+                  </span>
+                  {(client.onboarding?.story?.education && client.onboarding.story.education.length > 0) ? (
+                    client.onboarding.story.education.map((ed, i) => (
+                      <span key={i} className="block text-zinc-800 font-medium mt-0.5">
+                        • {ed.career} — {ed.institution} ({ed.year})
+                      </span>
+                    ))
+                  ) : client.content.education.items.length > 0 ? (
+                    client.content.education.items.map((ed: any, i: number) => (
+                      <span key={i} className="block text-zinc-800 font-medium mt-0.5">
+                        • {ed.degree || ed.career} — {ed.institution} ({ed.year})
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-zinc-400 italic">No especificadas</span>
+                  )}
                 </div>
               </div>
+            </div>
 
-              {/* 3. Oferta & Servicios */}
-              <div className="p-4 rounded-xl border border-zinc-200 bg-white space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900 border-b border-zinc-100 pb-2">
-                  3. Servicios & Portfolio
-                </h4>
-                <div className="space-y-2 text-xs">
-                  <div>
-                    <span className="text-zinc-400 block text-[10px] uppercase">Servicios Registrados:</span>
-                    {client.onboarding.offer.services.map((srv, i) => (
+            {/* 3. Oferta & Servicios (Incluye Portfolio) */}
+            <div className="p-4 rounded-xl border border-zinc-200 bg-white space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900 border-b border-zinc-100 pb-2 flex items-center justify-between">
+                <span>3. Servicios & Portfolio</span>
+                <span className="text-[10px] text-zinc-400 font-normal">Paso 3</span>
+              </h4>
+              <div className="space-y-2 text-xs">
+                <div>
+                  <span className="text-zinc-400 block text-[10px] uppercase">Servicios Registrados:</span>
+                  {(client.onboarding?.offer?.services && client.onboarding.offer.services.length > 0) ? (
+                    client.onboarding.offer.services.map((srv, i) => (
                       <div key={i} className="mt-1 p-2 bg-zinc-50 rounded border border-zinc-100">
                         <strong className="text-zinc-900 block">{srv.name}</strong>
                         <span className="text-zinc-500 text-[11px]">{srv.description}</span>
                       </div>
-                    ))}
-                  </div>
-                  {client.onboarding.offer.specialties.length > 0 && (
-                    <div>
-                      <span className="text-zinc-400 block text-[10px] uppercase mt-2">Especialidades:</span>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {client.onboarding.offer.specialties.map((tag, i) => (
-                          <span key={i} className="px-2 py-0.5 rounded bg-zinc-100 text-zinc-800 text-[10px]">
-                            {tag}
-                          </span>
-                        ))}
+                    ))
+                  ) : client.content.services.items.length > 0 ? (
+                    client.content.services.items.map((srv: any, i: number) => (
+                      <div key={i} className="mt-1 p-2 bg-zinc-50 rounded border border-zinc-100">
+                        <strong className="text-zinc-900 block">{srv.name || srv.title}</strong>
+                        <span className="text-zinc-500 text-[11px]">{srv.description}</span>
                       </div>
+                    ))
+                  ) : (
+                    <span className="text-zinc-400 italic">Sin servicios cargados</span>
+                  )}
+                </div>
+
+                {/* Especialidades */}
+                {((client.onboarding?.offer?.specialties && client.onboarding.offer.specialties.length > 0) || client.specialties.length > 0) && (
+                  <div>
+                    <span className="text-zinc-400 block text-[10px] uppercase mt-2">Especialidades:</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {(client.onboarding?.offer?.specialties || client.specialties).map((tag, i) => (
+                        <span key={i} className="px-2 py-0.5 rounded bg-zinc-100 text-zinc-800 text-[10px]">
+                          {tag}
+                        </span>
+                      ))}
                     </div>
+                  </div>
+                )}
+
+                {/* Portfolio / Trabajos destacados */}
+                <div className="pt-1 border-t border-zinc-100">
+                  <span className="text-zinc-400 block text-[10px] uppercase">
+                    Portfolio & Trabajos Destacados ({client.onboarding?.offer?.projects?.length || client.content.portfolio.items.length}):
+                  </span>
+                  {(client.onboarding?.offer?.projects && client.onboarding.offer.projects.length > 0) ? (
+                    client.onboarding.offer.projects.map((p, i) => (
+                      <div key={i} className="mt-1 p-2 bg-zinc-50 rounded border border-zinc-100">
+                        <strong className="text-zinc-900 block">{p.name || (p as any).title} ({p.year || 'Reciente'})</strong>
+                        <span className="text-zinc-500 text-[11px] block">{p.description}</span>
+                        {p.url && (
+                          <a href={p.url} target="_blank" rel="noreferrer" className="text-blue-600 font-mono text-[10px] hover:underline truncate block mt-0.5">
+                            {p.url}
+                          </a>
+                        )}
+                      </div>
+                    ))
+                  ) : client.content.portfolio.items.length > 0 ? (
+                    client.content.portfolio.items.map((p: any, i: number) => (
+                      <div key={i} className="mt-1 p-2 bg-zinc-50 rounded border border-zinc-100">
+                        <strong className="text-zinc-900 block">{p.title}</strong>
+                        <span className="text-zinc-500 text-[11px] block">{p.description}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-zinc-400 italic">No indicó proyectos anteriores</span>
                   )}
                 </div>
               </div>
+            </div>
 
-              {/* 4. Estilo & Preferencias Visuales */}
-              <div className="p-4 rounded-xl border border-zinc-200 bg-white space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900 border-b border-zinc-100 pb-2">
-                  4. Estilo & Preferencias Visuales
-                </h4>
-                <div className="space-y-2 text-xs">
-                  <div>
-                    <span className="text-zinc-400 block text-[10px] uppercase">Sensación / Mood:</span>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {client.onboarding.style.moodTags.map((tag, i) => (
+            {/* 4. Canales de Contacto & Dónde Encontrarte */}
+            <div className="p-4 rounded-xl border border-zinc-200 bg-white space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900 border-b border-zinc-100 pb-2 flex items-center justify-between">
+                <span>4. Canales de Contacto</span>
+                <span className="text-[10px] text-zinc-400 font-normal">Paso 4</span>
+              </h4>
+              <div className="space-y-2 text-xs">
+                <div>
+                  <span className="text-zinc-400 block text-[10px] uppercase">Canal Principal de Conversión:</span>
+                  <span className="font-bold text-[#0033FF] uppercase text-xs">
+                    ⚡ {client.onboarding?.contact?.primaryContactMethod || 'WhatsApp Directo'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-zinc-400 block text-[10px] uppercase">WhatsApp:</span>
+                  <span className="font-mono text-zinc-900 font-semibold">
+                    {client.onboarding?.contact?.whatsapp || client.content.contact.whatsapp || client.whatsapp || 'No especificado'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-zinc-400 block text-[10px] uppercase">Email:</span>
+                  <span className="font-mono text-zinc-900">
+                    {client.onboarding?.contact?.email || client.content.contact.email || client.email || 'No especificado'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-zinc-400 block text-[10px] uppercase">Instagram:</span>
+                  <span className="text-zinc-800">
+                    {client.onboarding?.contact?.instagram || client.content.contact.instagram || client.instagram || 'No especificado'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-zinc-400 block text-[10px] uppercase">Ubicación / Ciudad:</span>
+                  <span className="text-zinc-800">
+                    {client.onboarding?.contact?.city || client.content.contact.location || client.city}, {client.onboarding?.contact?.country || client.country}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* 5. Estilo & Preferencias Visuales */}
+            <div className="p-4 rounded-xl border border-zinc-200 bg-white space-y-3 md:col-span-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900 border-b border-zinc-100 pb-2 flex items-center justify-between">
+                <span>5. Estilo & Preferencias Visuales</span>
+                <span className="text-[10px] text-zinc-400 font-normal">Paso 5</span>
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                <div>
+                  <span className="text-zinc-400 block text-[10px] uppercase">Sensación / Mood:</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {(client.onboarding?.style?.moodTags && client.onboarding.style.moodTags.length > 0) ? (
+                      client.onboarding.style.moodTags.map((tag, i) => (
                         <span
                           key={i}
                           className="px-2.5 py-0.5 rounded-full bg-zinc-900 text-white text-[11px] font-medium"
                         >
                           {tag}
                         </span>
-                      ))}
-                    </div>
+                      ))
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full bg-zinc-900 text-white text-[11px] font-medium">
+                        Profesional, Minimalista
+                      </span>
+                    )}
                   </div>
-                  <div>
-                    <span className="text-zinc-400 block text-[10px] uppercase mt-2">Colores / Paleta:</span>
-                    <span className="text-zinc-800">
-                      {client.onboarding.style.customColorNotes || 'Paleta estándar'}
-                    </span>
-                  </div>
-                  {client.onboarding.style.referenceUrls.length > 0 && (
-                    <div>
-                      <span className="text-zinc-400 block text-[10px] uppercase mt-2">Referencias Web:</span>
-                      {client.onboarding.style.referenceUrls.map((url, i) => (
-                        <a
-                          key={i}
-                          href={url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-blue-600 hover:underline block truncate font-mono text-[11px]"
-                        >
-                          {url}
-                        </a>
-                      ))}
-                    </div>
-                  )}
-                  {client.onboarding.style.negativePreferences && (
-                    <div>
-                      <span className="text-zinc-400 block text-[10px] uppercase mt-2">Lo que NO quiere:</span>
-                      <p className="text-rose-700 italic bg-rose-50 p-2 rounded border border-rose-100">
-                        {client.onboarding.style.negativePreferences}
-                      </p>
-                    </div>
+                </div>
+
+                <div>
+                  <span className="text-zinc-400 block text-[10px] uppercase">Colores / Paleta Seleccionada:</span>
+                  {(() => {
+                    const colorText = client.onboarding?.style?.customColorNotes || (client.content.identity.colors?.length ? client.content.identity.colors.join(', ') : 'Azul Klein (#0033FF), Blanco cálido, Grafito');
+                    const hexMatches = Array.from(new Set(colorText.match(/#[0-9A-Fa-f]{6}|#[0-9A-Fa-f]{3}/g) || []));
+                    return (
+                      <div className="space-y-1.5 mt-1">
+                        {hexMatches.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {hexMatches.map((hex, i) => (
+                              <span key={i} className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-zinc-200 bg-zinc-50 font-mono text-[10px] font-bold text-zinc-900 shadow-2xs">
+                                <span className="w-3 h-3 rounded-full border border-black/15 shrink-0" style={{ backgroundColor: hex }} />
+                                {hex.toUpperCase()}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <span className="text-zinc-700 font-medium block text-xs">
+                          {colorText}
+                        </span>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                <div>
+                  <span className="text-zinc-400 block text-[10px] uppercase">Referencias Web:</span>
+                  {(client.onboarding?.style?.referenceUrls && client.onboarding.style.referenceUrls.length > 0) ? (
+                    client.onboarding.style.referenceUrls.map((url, i) => (
+                      <a
+                        key={i}
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blue-600 hover:underline block truncate font-mono text-[11px] mt-0.5"
+                      >
+                        {url}
+                      </a>
+                    ))
+                  ) : (
+                    <span className="text-zinc-400 italic block mt-1">Ninguna referencia indicada</span>
                   )}
                 </div>
+
+                {client.onboarding?.style?.negativePreferences && (
+                  <div className="sm:col-span-3 pt-2 border-t border-zinc-100">
+                    <span className="text-rose-600 font-bold block text-[10px] uppercase">⚠️ Lo que NO quiere en su web:</span>
+                    <p className="text-rose-700 italic bg-rose-50 p-2.5 rounded-lg border border-rose-100 mt-1">
+                      {client.onboarding.style.negativePreferences}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
-          ) : (
-            <div className="p-8 text-center border border-dashed border-zinc-200 rounded-xl space-y-3">
-              <p className="text-xs text-zinc-500">
-                Este cliente todavía no ha comenzado su proceso de onboarding interactivo.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const url = `${window.location.origin}${window.location.pathname}#/onboarding/${client.id}`;
-                  navigator.clipboard.writeText(url);
-                  alert(`¡Enlace copiado para ${client.fullName}!\n\n${url}`);
-                }}
-                icon={<Sparkles className="w-3.5 h-3.5" />}
-              >
-                Copiar Enlace para enviárselo al Cliente
-              </Button>
-            </div>
-          )}
+          </div>
         </div>
       )}
 
@@ -1325,7 +1502,156 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
               )}
             </div>
 
-            {/* Section 4: Portfolio / Proyectos */}
+            {/* Section 4: Formación Académica */}
+            <div className="p-4 rounded-xl border border-zinc-200 bg-zinc-50/50 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <button
+                    onClick={() => handleToggleContentSection('education')}
+                    className={`w-4 h-4 rounded border flex items-center justify-center ${
+                      client.content.education.isComplete
+                        ? 'bg-zinc-900 border-zinc-900 text-white'
+                        : 'border-zinc-300 bg-white'
+                    }`}
+                  >
+                    {client.content.education.isComplete && <CheckCircle2 className="w-3.5 h-3.5" />}
+                  </button>
+                  <h4 className="text-xs font-bold text-zinc-900 uppercase tracking-wider">
+                    4. Formación Académica & Certificaciones ({client.content.education.items.length})
+                  </h4>
+                </div>
+                <span
+                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                    client.content.education.isComplete
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-amber-100 text-amber-800'
+                  }`}
+                >
+                  {client.content.education.isComplete ? 'Completo' : 'Pendiente'}
+                </span>
+              </div>
+
+              {client.content.education.items.length === 0 ? (
+                <p className="text-xs text-zinc-400 italic">No hay títulos o certificaciones registradas.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {client.content.education.items.map((ed: any, idx: number) => (
+                    <div key={idx} className="p-2.5 rounded-lg bg-white border border-zinc-200/80 text-xs flex items-center justify-between">
+                      <div>
+                        <span className="font-semibold text-zinc-900">{ed.degree || ed.career}</span>
+                        <span className="text-zinc-500 block text-[11px]">{ed.institution}</span>
+                      </div>
+                      {ed.year && (
+                        <span className="text-[11px] font-mono text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded">
+                          {ed.year}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Section 5: Trayectoria & Experiencia */}
+            <div className="p-4 rounded-xl border border-zinc-200 bg-zinc-50/50 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <button
+                    onClick={() => handleToggleContentSection('experience')}
+                    className={`w-4 h-4 rounded border flex items-center justify-center ${
+                      client.content.experience.isComplete
+                        ? 'bg-zinc-900 border-zinc-900 text-white'
+                        : 'border-zinc-300 bg-white'
+                    }`}
+                  >
+                    {client.content.experience.isComplete && <CheckCircle2 className="w-3.5 h-3.5" />}
+                  </button>
+                  <h4 className="text-xs font-bold text-zinc-900 uppercase tracking-wider">
+                    5. Trayectoria & Experiencia Laboral ({client.content.experience.items.length})
+                  </h4>
+                </div>
+                <span
+                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                    client.content.experience.isComplete
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-amber-100 text-amber-800'
+                  }`}
+                >
+                  {client.content.experience.isComplete ? 'Completo' : 'Pendiente'}
+                </span>
+              </div>
+
+              {client.content.experience.items.length === 0 ? (
+                <p className="text-xs text-zinc-400 italic">No hay cargos o experiencias cargadas.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {client.content.experience.items.map((exp: any, idx: number) => (
+                    <div key={idx} className="p-2.5 rounded-lg bg-white border border-zinc-200/80 text-xs flex items-center justify-between">
+                      <div>
+                        <span className="font-semibold text-zinc-900">{exp.role}</span>
+                        <span className="text-zinc-500 block text-[11px]">{exp.company || exp.place}</span>
+                      </div>
+                      {(exp.period || exp.year) && (
+                        <span className="text-[11px] font-mono text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded">
+                          {exp.period || exp.year}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Section 6: Contacto & Redes */}
+            <div className="p-4 rounded-xl border border-zinc-200 bg-zinc-50/50 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <button
+                    onClick={() => handleToggleContentSection('contact')}
+                    className={`w-4 h-4 rounded border flex items-center justify-center ${
+                      client.content.contact.isComplete
+                        ? 'bg-zinc-900 border-zinc-900 text-white'
+                        : 'border-zinc-300 bg-white'
+                    }`}
+                  >
+                    {client.content.contact.isComplete && <CheckCircle2 className="w-3.5 h-3.5" />}
+                  </button>
+                  <h4 className="text-xs font-bold text-zinc-900 uppercase tracking-wider">
+                    6. Datos de Contacto & Canales
+                  </h4>
+                </div>
+                <span
+                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                    client.content.contact.isComplete
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-amber-100 text-amber-800'
+                  }`}
+                >
+                  {client.content.contact.isComplete ? 'Completo' : 'Pendiente'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <div className="p-2.5 rounded-lg bg-white border border-zinc-200/80">
+                  <span className="text-[10px] text-zinc-400 block uppercase">WhatsApp:</span>
+                  <span className="font-mono font-semibold text-zinc-900">{client.content.contact.whatsapp || 'No especificado'}</span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-white border border-zinc-200/80">
+                  <span className="text-[10px] text-zinc-400 block uppercase">Email:</span>
+                  <span className="font-mono text-zinc-900">{client.content.contact.email || 'No especificado'}</span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-white border border-zinc-200/80">
+                  <span className="text-[10px] text-zinc-400 block uppercase">Instagram:</span>
+                  <span className="text-zinc-800">{client.content.contact.instagram || 'No especificado'}</span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-white border border-zinc-200/80">
+                  <span className="text-[10px] text-zinc-400 block uppercase">Ubicación:</span>
+                  <span className="text-zinc-800">{client.content.contact.location || client.city}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 7: Portfolio / Proyectos */}
             <div className="p-4 rounded-xl border border-zinc-200 bg-zinc-50/50 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
@@ -1340,7 +1666,7 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
                     {client.content.portfolio.isComplete && <CheckCircle2 className="w-3.5 h-3.5" />}
                   </button>
                   <h4 className="text-xs font-bold text-zinc-900 uppercase tracking-wider">
-                    4. Portfolio & Fotografías de Casos ({client.content.portfolio.items.length})
+                    7. Portfolio & Fotografías de Casos ({client.content.portfolio.items.length})
                   </h4>
                 </div>
                 <span
@@ -1393,7 +1719,19 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
           </div>
 
           {!primaryProject ? (
-            <p className="text-xs text-zinc-400 italic">No hay proyecto activo asociado.</p>
+            <div className="p-8 text-center border border-dashed border-zinc-200 rounded-xl space-y-3">
+              <p className="text-xs text-zinc-500">
+                No hay un proyecto web activo asociado a este cliente todavía.
+              </p>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleCreateProject}
+                icon={<Plus className="w-3.5 h-3.5" />}
+              >
+                + Crear Proyecto Web de 72hs
+              </Button>
+            </div>
           ) : (
             <div className="space-y-6">
               {(['CLIENTE', 'DISEÑO', 'DESARROLLO', 'PUBLICACIÓN'] as const).map((category) => {
@@ -1566,6 +1904,54 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
         onClose={() => setIsShareModalOpen(false)}
         client={client}
       />
+
+      {/* Custom In-App Delete Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <Modal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          title="Eliminar Ficha de Cliente"
+          subtitle="Confirmación de baja definitiva en el sistema y base de datos."
+          maxWidth="md"
+        >
+          <div className="space-y-4 pt-1">
+            <div className="flex items-start gap-3.5 p-4 rounded-xl bg-rose-50 border border-rose-100 text-rose-950">
+              <div className="p-2.5 rounded-lg bg-rose-100 text-rose-600 shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div className="text-xs space-y-1.5 min-w-0">
+                <p className="font-bold text-sm text-zinc-900">
+                  ¿Estás seguro de que querés eliminar a {client.fullName}?
+                </p>
+                <p className="text-zinc-600 leading-relaxed">
+                  Esta acción es irreversible y eliminará su ficha (<span className="font-mono font-bold text-zinc-800">{client.id}</span>), proyectos web, dominios y tareas asociadas tanto del panel como de la base de datos Supabase.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-100">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsDeleteModalOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <button
+                onClick={() => {
+                  db.deleteClient(client.id);
+                  setIsDeleteModalOpen(false);
+                  onBack();
+                }}
+                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Eliminar Permanentemente
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

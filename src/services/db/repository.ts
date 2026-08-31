@@ -196,6 +196,18 @@ export const db = {
     state.domains = state.domains.filter((d) => d.clientId !== id);
     state.tasks = state.tasks.filter((t) => t.clientId !== id);
     state.notes = state.notes.filter((n) => n.clientId !== id);
+    state.activityLogs = state.activityLogs.filter((a) => a.clientId !== id);
+
+    // Also remove the local onboarding submission so it doesn't resurrect on next sync
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(`trayectoria_onboarding_${id}`);
+        localStorage.removeItem(`trayectoria_onboarding_step_${id}`);
+      }
+    } catch (e) {
+      console.warn('Error clearing onboarding localStorage keys:', e);
+    }
+
     saveDatabase(state);
 
     if (isSupabaseConfigured) {
@@ -527,9 +539,9 @@ export const db = {
       (c) =>
         c.status === 'En producción' ||
         c.status === 'Contactado' ||
-        !c.content.portfolio.isComplete ||
-        !c.content.identity.isComplete ||
-        !c.content.services.isComplete
+        !c.content?.portfolio?.isComplete ||
+        !c.content?.identity?.isComplete ||
+        !c.content?.services?.isComplete
     ).length;
 
     return {
@@ -657,6 +669,44 @@ export const db = {
     return results.slice(0, 15);
   },
 
+<<<<<<< HEAD
+=======
+  // SYNC FROM SUPABASE CLOUD
+  async pullFromSupabase(): Promise<boolean> {
+    if (!isSupabaseConfigured) return false;
+    try {
+      const state = loadDatabase();
+      const sbClients = await supabaseDb.getClients();
+      const sbProjects = await supabaseDb.getProjects();
+      const sbWebs = await supabaseDb.getWebs();
+      const sbDomains = await supabaseDb.getDomains();
+      const sbTasks = await supabaseDb.getTasks();
+
+      if (sbClients && sbClients.length > 0) {
+        state.clients = sbClients;
+      }
+      if (sbProjects && sbProjects.length > 0) {
+        state.projects = sbProjects;
+      }
+      if (sbWebs && sbWebs.length > 0) {
+        state.webs = sbWebs;
+      }
+      if (sbDomains && sbDomains.length > 0) {
+        state.domains = sbDomains;
+      }
+      if (sbTasks && sbTasks.length > 0) {
+        state.tasks = sbTasks;
+      }
+
+      saveDatabase(state);
+      return true;
+    } catch (e) {
+      console.warn('Could not pull from Supabase:', e);
+      return false;
+    }
+  },
+
+>>>>>>> fd6976d (feat: soporte completo para web de negocios y profesionales, eliminacion modal y generacion prompt AI)
   // SYNC ONBOARDING SUBMISSIONS AUTOMATICALLY INTO CLIENTS
   syncOnboardingSubmissions(): number {
     const state = loadDatabase();
@@ -766,7 +816,18 @@ export const db = {
               price: '$95 USD',
               createdAt: today,
               lastContact: today,
-              internalNotes: `Cliente registrado automáticamente vía Onboarding Web (Estado: ${submission.status}). Sensaciones: ${(submission.style?.sensaciones || []).join(', ')}.`,
+              specialties: submission.offer?.especialidades || [],
+              bio: submission.history?.presentacionCorta || '',
+              shortDescription: p.especialidadPrincipal || '',
+              experienceSummary: '',
+              educationSummary: '',
+              locationDetails: submission.contact?.ubicacion?.ciudad || p.ciudad || '',
+              workingHours: '',
+              contractedProduct: 'Web Profesional 72hs',
+              paymentMethod: 'Transferencia',
+              contractDate: today,
+              paymentStatus: 'Al día',
+              commercialNotes: `Cliente registrado automáticamente vía Onboarding Web (Estado: ${submission.status}). Sensaciones: ${(submission.style?.sensaciones || []).join(', ')}.`,
               content: mappedContent,
             };
 
@@ -779,7 +840,7 @@ export const db = {
               clientName: fullName,
               name: `${commercialName} — Web Principal`,
               projectType: 'Sitio Web Completo',
-              status: submission.status === 'submitted' ? 'En producción' : 'Esperando contenido',
+              status: submission.status === 'submitted' ? 'En diseño' : 'Esperando contenido',
               startDate: today,
               estimatedDeliveryDate: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
               price: '$95 USD',
@@ -849,20 +910,21 @@ export function getDomainExpirationInfo(expirationDateStr: string): {
   return { daysLeft, statusCategory: 'safe', label: `${daysLeft} días restantes` };
 }
 
-export function calculateContentCompleteness(content: Client['content']): {
+export function calculateContentCompleteness(content?: Client['content']): {
   percentage: number;
   isComplete: boolean;
   sections: { name: string; complete: boolean }[];
   missingCount: number;
 } {
+  const c = content || ({} as any);
   const sections = [
-    { name: 'Identidad Visual', complete: content.identity.isComplete },
-    { name: 'Presentación & Bio', complete: content.presentation.isComplete },
-    { name: 'Servicios', complete: content.services.isComplete },
-    { name: 'Formación', complete: content.education.isComplete },
-    { name: 'Experiencia', complete: content.experience.isComplete },
-    { name: 'Contacto & Redes', complete: content.contact.isComplete },
-    { name: 'Portfolio / Casos', complete: content.portfolio.isComplete },
+    { name: 'Identidad Visual', complete: Boolean(c.identity?.isComplete) },
+    { name: 'Presentación & Bio', complete: Boolean(c.presentation?.isComplete) },
+    { name: 'Servicios', complete: Boolean(c.services?.isComplete) },
+    { name: 'Formación', complete: Boolean(c.education?.isComplete) },
+    { name: 'Experiencia', complete: Boolean(c.experience?.isComplete) },
+    { name: 'Contacto & Redes', complete: Boolean(c.contact?.isComplete) },
+    { name: 'Portfolio / Casos', complete: Boolean(c.portfolio?.isComplete) },
   ];
 
   const completedCount = sections.filter((s) => s.complete).length;

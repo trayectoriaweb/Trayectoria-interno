@@ -116,9 +116,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentSection, onNavigate, co
         <div className="flex items-center justify-between text-[11px] text-slate-500">
           <div className="flex items-center gap-1.5 font-medium">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Supabase Cloud</span>
+            <span>Sistema Operativo</span>
           </div>
-          <span className="font-mono text-[10px] text-slate-400">v2026.9</span>
+          <span className="font-mono text-[10px] font-bold text-[#0033FF]">v2026.15</span>
         </div>
 
         <a

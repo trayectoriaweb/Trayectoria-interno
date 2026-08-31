@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Users,
   Search,
@@ -15,9 +15,12 @@ import {
   LayoutGrid,
   List,
   Sparkles,
+  Trash2,
 } from 'lucide-react';
 import { db, calculateContentCompleteness } from '../../services/db/repository';
+import { subscribeToDatabase } from '../../services/db/storage';
 import { Client, ClientStatus } from '../../types';
+import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { StatusPill } from '../common/StatusPill';
 import { EmptyState } from '../common/EmptyState';
@@ -39,6 +42,26 @@ export const ClientListView: React.FC<ClientListViewProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>('Todos');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [sharingClient, setSharingClient] = useState<Client | null>(null);
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const unsub = subscribeToDatabase(() => {
+      setRefreshKey((k) => k + 1);
+    });
+    return unsub;
+  }, []);
+
+  const handleDeleteClient = (client: Client) => {
+    setClientToDelete(client);
+  };
+
+  const confirmDeleteClient = () => {
+    if (!clientToDelete) return;
+    db.deleteClient(clientToDelete.id);
+    setClientToDelete(null);
+    setRefreshKey((k) => k + 1);
+  };
 
   const clients = db.getClients();
 
@@ -66,7 +89,7 @@ export const ClientListView: React.FC<ClientListViewProps> = ({
     const matchesStatus =
       statusFilter === 'Todos' ||
       (statusFilter === 'Esperando contenido'
-        ? !client.content.portfolio.isComplete || !client.content.identity.isComplete
+        ? !client.content?.portfolio?.isComplete || !client.content?.identity?.isComplete
         : client.status === statusFilter);
 
     return matchesSearch && matchesStatus;
@@ -164,13 +187,37 @@ export const ClientListView: React.FC<ClientListViewProps> = ({
 
       {/* Content Section */}
       {filteredClients.length === 0 ? (
-        <EmptyState
-          icon={<Users className="w-6 h-6" />}
-          title="No se encontraron clientes"
-          description="Probá ajustando el término de búsqueda o seleccioná otro filtro de estado."
-          actionLabel="+ Nuevo Cliente"
-          onAction={onOpenNewClient}
-        />
+        <div className="p-10 rounded-2xl border border-zinc-200 bg-white text-center space-y-4 max-w-lg mx-auto shadow-2xs my-6">
+          <div className="w-12 h-12 rounded-full bg-blue-50 text-[#0033FF] flex items-center justify-center mx-auto">
+            <Sparkles className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-zinc-900 font-display">Aún no hay clientes registrados</h3>
+            <p className="text-xs text-zinc-500 max-w-sm mx-auto mt-1 leading-relaxed">
+              Generá un enlace para enviar a tu cliente por WhatsApp. La ficha se creará automáticamente cuando envíe sus datos.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2">
+            <Button
+              variant="primary"
+              size="md"
+              onClick={onOpenQuickLink}
+              icon={<Sparkles className="w-4 h-4" />}
+              className="bg-[#0033FF] hover:bg-[#0026CC] text-white font-bold w-full sm:w-auto shadow-sm cursor-pointer"
+            >
+              ⚡ Generar Enlace para Cliente
+            </Button>
+            <Button
+              variant="outline"
+              size="md"
+              onClick={onOpenNewClient}
+              icon={<Plus className="w-4 h-4" />}
+              className="w-full sm:w-auto"
+            >
+              + Alta Manual
+            </Button>
+          </div>
+        </div>
       ) : viewMode === 'table' ? (
         /* TABLE VIEW */
         <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden shadow-xs">
@@ -313,7 +360,7 @@ export const ClientListView: React.FC<ClientListViewProps> = ({
 
                       {/* Action */}
                       <td className="px-4 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => setSharingClient(client)}
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-900 text-[11px] font-bold transition-colors border border-purple-200 shadow-2xs"
@@ -325,9 +372,20 @@ export const ClientListView: React.FC<ClientListViewProps> = ({
 
                           <button
                             onClick={() => onSelectClient(client.id)}
-                            className="inline-flex items-center gap-1 text-xs font-semibold text-zinc-800 hover:text-zinc-950 transition-colors"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 text-xs font-semibold transition-colors"
                           >
                             Ver Ficha <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteClient(client);
+                            }}
+                            className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                            title="Eliminar cliente"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>
@@ -369,7 +427,19 @@ export const ClientListView: React.FC<ClientListViewProps> = ({
                         <p className="text-xs text-zinc-500">{client.profession}</p>
                       </div>
                     </div>
-                    <StatusPill status={client.status} size="sm" />
+                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      <StatusPill status={client.status} size="sm" />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteClient(client);
+                        }}
+                        className="p-1 rounded-md text-zinc-300 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                        title="Eliminar cliente"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-zinc-100 space-y-2 text-xs text-zinc-600">
@@ -419,6 +489,50 @@ export const ClientListView: React.FC<ClientListViewProps> = ({
           onClose={() => setSharingClient(null)}
           client={sharingClient}
         />
+      )}
+
+      {/* Custom In-App Delete Confirmation Modal */}
+      {clientToDelete && (
+        <Modal
+          isOpen={!!clientToDelete}
+          onClose={() => setClientToDelete(null)}
+          title="Eliminar Ficha de Cliente"
+          subtitle="Confirmación de baja definitiva en el sistema y base de datos."
+          maxWidth="md"
+        >
+          <div className="space-y-4 pt-1">
+            <div className="flex items-start gap-3.5 p-4 rounded-xl bg-rose-50 border border-rose-100 text-rose-950">
+              <div className="p-2.5 rounded-lg bg-rose-100 text-rose-600 shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div className="text-xs space-y-1.5 min-w-0">
+                <p className="font-bold text-sm text-zinc-900">
+                  ¿Estás seguro de que querés eliminar a {clientToDelete.fullName}?
+                </p>
+                <p className="text-zinc-600 leading-relaxed">
+                  Esta acción es irreversible y eliminará su ficha (<span className="font-mono font-bold text-zinc-800">{clientToDelete.id}</span>), proyectos web, dominios y tareas asociadas tanto del panel como de la base de datos Supabase.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-100">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setClientToDelete(null)}
+              >
+                Cancelar
+              </Button>
+              <button
+                onClick={confirmDeleteClient}
+                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Eliminar Permanentemente
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

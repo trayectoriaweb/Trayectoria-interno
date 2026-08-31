@@ -71,8 +71,22 @@ export const supabaseDb = {
 
   async deleteClient(id: string): Promise<boolean> {
     if (!supabase) return false;
+    try {
+      await supabase.from('projects').delete().eq('client_id', id);
+      await supabase.from('webs').delete().eq('client_id', id);
+      await supabase.from('domains').delete().eq('client_id', id);
+      await supabase.from('tasks').delete().eq('client_id', id);
+      await supabase.from('activity_logs').delete().eq('client_id', id);
+    } catch (e) {
+      console.warn('Error clearing related client tables in Supabase:', e);
+    }
+
     const { error } = await supabase.from('clients').delete().eq('id', id);
-    return !error;
+    if (error) {
+      console.error('Error deleting client from Supabase:', error);
+      return false;
+    }
+    return true;
   },
 
   // PROJECTS
